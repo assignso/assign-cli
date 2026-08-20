@@ -35,8 +35,16 @@ snapshot without publishing with:
 goreleaser release --snapshot --clean
 ```
 
-Homebrew publication is intentionally not enabled yet. Assign is closed source,
-so `homebrew/core` is not an eligible route; the release needs a public binary
-artifact decision and an `assignso/homebrew-tap` repository before a cask can be
-published. The first usable path will be `brew install assignso/tap/assign`;
-after the tap is present, `brew install assign` also works for tapped users.
+Tagged releases publish public binary archives and a cask to
+[`assignso/homebrew-tap`](https://github.com/assignso/homebrew-tap). The release
+workflow requires a fine-grained `HOMEBREW_TAP_GITHUB_TOKEN` Actions secret with
+contents write access to that repository.
+
+After the first release is published and the tap is public, install with:
+
+```sh
+brew install assignso/tap/assign
+```
+
+After the tap is present, `brew install assign` also resolves the cask for
+tapped users.
