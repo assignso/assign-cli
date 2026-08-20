@@ -40,7 +40,7 @@ Tagged releases publish public binary archives and a cask to
 workflow requires a fine-grained `HOMEBREW_TAP_GITHUB_TOKEN` Actions secret with
 contents write access to that repository.
 
-After the first release is published and the tap is public, install with:
+Install the current preview with:
 
 ```sh
 brew install assignso/tap/assign
@@ -48,3 +48,7 @@ brew install assignso/tap/assign
 
 After the tap is present, `brew install assign` also resolves the cask for
 tapped users.
+
+The `v0.1.0-preview.1` macOS binaries are not Developer ID signed or notarized.
+Homebrew can install them, but macOS may block execution. Treat this as a
+packaging preview rather than a supported production release.
