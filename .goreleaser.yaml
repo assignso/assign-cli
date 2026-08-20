@@ -1,0 +1,53 @@
+version: 2
+
+project_name: assign
+
+builds:
+  - id: assign
+    main: .
+    binary: assign
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - >-
+        -s -w
+        -X github.com/assignso/assign-cli/internal/cli.version={{ .Version }}
+        -X github.com/assignso/assign-cli/internal/cli.commit={{ .Commit }}
+        -X github.com/assignso/assign-cli/internal/cli.date={{ .Date }}
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: assign
+    ids:
+      - assign
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: assign_{{ .Version }}_SHA256SUMS
+  algorithm: sha256
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+release:
+  prerelease: auto
