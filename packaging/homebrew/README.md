@@ -1,16 +1,19 @@
-# Homebrew release gate
+# Homebrew release and production gates
 
-The intended first-party distribution is a binary cask generated from signed,
-checksummed GitHub release archives into `assignso/homebrew-tap`.
+The first-party distribution is a cask generated from checksummed GitHub
+release archives in `assignso/homebrew-tap`. Current Homebrew resolves this
+uniquely named cask through `brew install assignso/tap/assign`; `--cask` remains
+an equivalent explicit spelling.
 
-Before enabling GoReleaser's `homebrew_casks` publisher:
+Before publishing the first preview:
 
-1. accept which Assign CLI binaries are public despite the closed source tree;
-2. create and register `assignso/homebrew-tap` in the repository map;
-3. configure a separate token with content-write access to that tap;
-4. add macOS signing/notarization and artifact provenance verification;
-5. release a stable immutable version and verify both macOS architectures;
-6. test install, upgrade, rollback, and uninstall from a clean Homebrew prefix.
+1. make `assignso/homebrew-tap` publicly readable so Homebrew can fetch releases;
+2. configure the `HOMEBREW_TAP_GITHUB_TOKEN` secret with contents write access;
+3. publish an immutable preview tag and verify both macOS architectures;
+4. test install, upgrade, rollback, and uninstall from a clean Homebrew prefix.
 
-Until those gates pass, the repository can produce local snapshot archives but
-must not claim that `brew install assign` is available.
+Production release still requires macOS signing/notarization, artifact
+provenance, revocation ownership, and a supported rollback procedure. Preview
+documentation must not imply those production qualifications are complete, and
+macOS may block an unnotarized preview binary until the user explicitly approves
+it in Privacy & Security settings.

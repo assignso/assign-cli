@@ -51,3 +51,25 @@ changelog:
 
 release:
   prerelease: auto
+  github:
+    owner: assignso
+    name: homebrew-tap
+
+homebrew_casks:
+  - name: assign
+    ids:
+      - assign
+    binaries:
+      - assign
+    directory: Casks
+    repository:
+      owner: assignso
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: Assign Release Bot
+      email: releases@assign.so
+    homepage: https://assign.so
+    description: Work with Assign from the terminal
+    skip_upload: false
