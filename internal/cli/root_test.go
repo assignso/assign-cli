@@ -3,6 +3,8 @@ package cli
 import (
 	"bytes"
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -27,10 +29,53 @@ func TestVersionCommands(t *testing.T) {
 	}
 }
 
-func TestBareCommandReportsPendingHomeContract(t *testing.T) {
+func TestBareCommandRequiresPersonalAPIToken(t *testing.T) {
+	t.Setenv("ASSIGN_TOKEN", "")
 	code, stdout, stderr := run(t)
-	if code != ExitOperation || stdout != "" || !strings.Contains(stderr, "bounded My Work API contract") {
+	if code != ExitAuthentication || stdout != "" || !strings.Contains(stderr, "set ASSIGN_TOKEN") {
 		t.Fatalf("bare result = (%d, %q, %q)", code, stdout, stderr)
+	}
+}
+
+func TestBareCommandListsMyWorkWithBearerToken(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/v1/cli/my-work" || request.Header.Get("Authorization") != "Bearer apt_test" {
+			t.Fatalf("request = %s %q", request.URL.Path, request.Header.Get("Authorization"))
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"items":[{"code":"PRO-123","title":"Ship the slice","status_category":"started"}],"next_cursor":null,"has_more":false}`))
+	}))
+	defer server.Close()
+	t.Setenv("ASSIGN_TOKEN", "apt_test")
+	var stdout, stderr bytes.Buffer
+	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
+	command.SetArgs([]string{"--host", server.URL})
+	if err := command.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if stdout.String() != "PRO-123  Ship the slice\n" || stderr.String() != "" {
+		t.Fatalf("output = (%q, %q)", stdout.String(), stderr.String())
+	}
+}
+
+func TestSearchUsesBearerAndRendersCode(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/v1/cli/search" || request.URL.Query().Get("q") != "ship now" || request.Header.Get("Authorization") != "Bearer apt_test" {
+			t.Fatalf("request = %s %q %q", request.URL.String(), request.URL.Query().Get("q"), request.Header.Get("Authorization"))
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"items":[{"resource_type":"task","code":"PRO-123","title":"Ship now","url":"https://app.assign.so/app/acme"}],"next_cursor":null,"has_more":false}`))
+	}))
+	defer server.Close()
+	t.Setenv("ASSIGN_TOKEN", "apt_test")
+	var stdout, stderr bytes.Buffer
+	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
+	command.SetArgs([]string{"--host", server.URL, "search", "ship now"})
+	if err := command.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if stdout.String() != "PRO-123  Ship now\n" || stderr.String() != "" {
+		t.Fatalf("output = (%q, %q)", stdout.String(), stderr.String())
 	}
 }
 

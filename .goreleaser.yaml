@@ -53,7 +53,7 @@ release:
   prerelease: auto
   github:
     owner: assignso
-    name: homebrew-tap
+    name: assign-cli
 
 homebrew_casks:
   - name: assign
