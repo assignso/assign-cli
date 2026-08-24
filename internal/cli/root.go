@@ -29,6 +29,25 @@ var (
 type options struct {
 	host        string
 	credentials credentialStore
+	contexts    projectContextStore
+}
+
+type commandAlias struct {
+	command string
+	aliases []string
+}
+
+var commandAliases = []commandAlias{
+	{command: "login", aliases: []string{"signin"}},
+	{command: "logout", aliases: []string{"signout"}},
+	{command: "search", aliases: []string{"find"}},
+	{command: "task", aliases: []string{"t"}},
+	{command: "workspace", aliases: []string{"ws"}},
+	{command: "project", aliases: []string{"p"}},
+	{command: "document", aliases: []string{"doc"}},
+	{command: "completion", aliases: []string{"completions"}},
+	{command: "version", aliases: []string{"v"}},
+	{command: "doctor", aliases: []string{"diag", "diagnose"}},
 }
 
 func Execute(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
@@ -56,7 +75,7 @@ func newRootCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 }
 
 func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client *http.Client) *cobra.Command {
-	opts := &options{credentials: defaultCredentialStore()}
+	opts := &options{credentials: defaultCredentialStore(), contexts: defaultProjectContextStore()}
 	if client == nil {
 		client = http.DefaultClient
 	}
@@ -85,19 +104,79 @@ func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client 
 	})
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.CompletionOptions.SetDefaultShellCompDirective(cobra.ShellCompDirectiveNoFileComp)
+	root.ValidArgsFunction = completeAliases
 	root.PersistentFlags().StringVar(&opts.host, "host", defaultHost, "Assign API host (HTTPS only, for this command)")
 
-	root.AddCommand(newVersionCommand())
-	root.AddCommand(newCompletionCommand(root))
-	root.AddCommand(newDoctorCommand(opts))
-	root.AddCommand(newLoginCommand(opts, client))
-	root.AddCommand(newLogoutCommand(opts, client))
-	root.AddCommand(newSearchCommand(opts, client))
+	root.AddCommand(withAliases(newVersionCommand()))
+	root.AddCommand(withAliases(newCompletionCommand(root)))
+	root.AddCommand(withAliases(newDoctorCommand(opts)))
+	root.AddCommand(withAliases(newLoginCommand(opts, client)))
+	root.AddCommand(withAliases(newLogoutCommand(opts, client)))
+	root.AddCommand(withAliases(newSearchCommand(opts, client)))
+	root.AddCommand(newAliasesCommand())
+	root.AddCommand(withAliases(newTaskCommand(opts, client)))
+	root.AddCommand(withAliases(newWorkspaceCommand(opts, client)))
+	root.AddCommand(withAliases(newProjectCommand(opts, client)))
+	root.AddCommand(withAliases(newDocumentCommand(opts, client)))
 	root.AddCommand(newTaskActionCommand("start", "Start and assign a Task", opts, client))
 	root.AddCommand(newTaskActionCommand("done", "Complete a Task", opts, client))
 	root.AddCommand(newTaskActionCommand("reopen", "Reopen a Task", opts, client))
 
 	return root
+}
+
+func completeAliases(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	completions := make([]string, 0, len(commandAliases))
+	for _, definition := range commandAliases {
+		for _, alias := range definition.aliases {
+			if strings.HasPrefix(alias, toComplete) {
+				completions = append(completions, cobra.CompletionWithDesc(alias, "Alias for "+definition.command))
+			}
+		}
+	}
+	return completions, cobra.ShellCompDirectiveNoFileComp
+}
+
+func withAliases(command *cobra.Command) *cobra.Command {
+	name := command.Name()
+	for _, definition := range commandAliases {
+		if definition.command == name {
+			command.Aliases = append([]string(nil), definition.aliases...)
+			break
+		}
+	}
+	return command
+}
+
+func newAliasesCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "aliases",
+		Short: "List command aliases",
+		Args:  noArgs,
+		RunE: func(command *cobra.Command, _ []string) error {
+			for _, definition := range commandAliases {
+				if _, err := fmt.Fprintf(command.OutOrStdout(), "%s  %s\n", strings.Join(definition.aliases, ", "), definition.command); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+}
+
+func newTaskCommand(opts *options, client *http.Client) *cobra.Command {
+	command := &cobra.Command{
+		Use:   "task",
+		Short: "Work with Tasks",
+		Args:  noArgs,
+	}
+	command.AddCommand(newTaskActionCommand("start", "Start and assign a Task", opts, client))
+	command.AddCommand(newTaskActionCommand("done", "Complete a Task", opts, client))
+	command.AddCommand(newTaskActionCommand("reopen", "Reopen a Task", opts, client))
+	return command
 }
 
 func newTaskActionCommand(action, description string, opts *options, client *http.Client) *cobra.Command {

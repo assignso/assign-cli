@@ -8,10 +8,36 @@ This repository currently contains the release foundation and first API-backed
 slice, not the complete terminal product. It implements version reporting,
 Bash/Zsh/Fish completion, HTTPS host validation, redacted diagnostics, stable
 exit codes, browser loopback-PKCE login, automatic refresh rotation, logout,
-bounded My Work/search, revisioned Task actions, and macOS/Linux/Windows release
-builds. Interactive credentials prefer the native OS credential vault with a
-restricted atomic-file fallback. Workspace/Project context, full Task/Document
-navigation, and the remaining release qualification are pending.
+bounded My Work/search, Workspace switching, Project selection/list/show/task
+and Document list/show navigation, revisioned Task actions, and
+macOS/Linux/Windows release builds. Interactive credentials prefer the native
+OS credential vault with a restricted atomic-file fallback. Full Task detail,
+browser handoff, and the remaining release qualification are pending.
+
+Command aliases are reviewed, documented shortcuts rather than a second command
+language. Run `assign aliases` for the current table or use command help to see
+aliases for one command. Examples include `assign find` for `assign search`,
+`assign t done` for `assign task done`, and `assign diag` for `assign doctor`.
+Resource aliases are `workspace/ws`, `project/p`, `task/t`, and
+`document/doc`; subcommands also expose conservative shorthands such as
+`list/ls`, `show/view`, and `switch/use/sw`.
+
+Common navigation commands:
+
+```sh
+assign ws list
+assign ws switch another-workspace
+assign p list
+assign p switch PRO
+assign p tasks
+assign p docs
+assign doc list --project PRO
+assign doc show release-plan
+```
+
+Workspace enumeration/switching requires interactive login because personal
+API tokens are intentionally Workspace-bound. Project selection is a local
+host-and-Workspace-partitioned hint; the server still authorizes every request.
 
 ## Development
 
