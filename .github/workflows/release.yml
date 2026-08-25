@@ -8,11 +8,29 @@ permissions:
   contents: write
 
 jobs:
-  verify:
-    uses: ./.github/workflows/ci.yml
+  verify-ci:
+    name: Reuse successful exact-SHA CI
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Require successful push CI for this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ci_run=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?event=push&head_sha=$GITHUB_SHA&per_page=100" \
+            --jq '[.workflow_runs[] | select(.head_sha == "'"$GITHUB_SHA"'" and .status == "completed" and .conclusion == "success")] | sort_by(.updated_at) | last | select(. != null) | [.id, .head_sha, .conclusion, .updated_at, .html_url] | @tsv')
+          test -n "$ci_run" || { echo "no successful completed CI push run for $GITHUB_REPOSITORY@$GITHUB_SHA" >&2; exit 1; }
+          IFS=$'\t' read -r run_id run_sha conclusion completed_at run_url <<< "$ci_run"
+          test "$run_sha" = "$GITHUB_SHA"
+          test "$conclusion" = success
+          printf 'Reusing CI run %s completed at %s: %s\n' "$run_id" "$completed_at" "$run_url"
+          printf 'Reused successful exact-SHA CI: [%s](%s)\n' "$run_id" "$run_url" >> "$GITHUB_STEP_SUMMARY"
 
   release:
-    needs: verify
+    needs: verify-ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
