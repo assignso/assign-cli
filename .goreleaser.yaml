@@ -40,6 +40,9 @@ archives:
 checksum:
   name_template: assign_{{ .Version }}_SHA256SUMS
   algorithm: sha256
+  extra_files:
+    - glob: ./install.sh
+    - glob: ./install.ps1
 
 changelog:
   use: git
@@ -50,6 +53,10 @@ changelog:
       - '^test:'
 
 release:
+
+  extra_files:
+    - glob: ./install.sh
+    - glob: ./install.ps1
   prerelease: auto
   github:
     owner: assignso

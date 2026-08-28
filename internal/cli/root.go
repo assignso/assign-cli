@@ -108,6 +108,7 @@ func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client 
 	root.PersistentFlags().StringVar(&opts.host, "host", defaultHost, "Assign API host (HTTPS only, for this command)")
 
 	root.AddCommand(withAliases(newVersionCommand()))
+	root.AddCommand(newUpdateCommand(releaseHTTPClient()))
 	root.AddCommand(withAliases(newCompletionCommand(root)))
 	root.AddCommand(withAliases(newDoctorCommand(opts)))
 	root.AddCommand(withAliases(newLoginCommand(opts, client)))

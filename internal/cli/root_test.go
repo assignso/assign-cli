@@ -31,6 +31,64 @@ func TestVersionCommands(t *testing.T) {
 	}
 }
 
+func TestUpdateCheckSelectsTheCorrectReleaseChannel(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("User-Agent") != "assign-cli/1.0.0-rc.1" {
+			t.Fatalf("user agent = %q", request.Header.Get("User-Agent"))
+		}
+		_, _ = response.Write([]byte(`[{"tag_name":"1.0.0-rc.3","prerelease":true},{"tag_name":"1.0.0","prerelease":false}]`))
+	}))
+	defer server.Close()
+	var output bytes.Buffer
+	if err := runUpdateCheck(context.Background(), &output, server.Client(), server.URL, "1.0.0-rc.1"); err != nil {
+		t.Fatalf("check: %v", err)
+	}
+	if output.String() != "assign 1.0.0 is available (installed 1.0.0-rc.1)\nRun: assign update install\n" {
+		t.Fatalf("output = %q", output.String())
+	}
+}
+
+func TestUpdateCheckKeepsStableClientsOnStableChannel(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, _ = response.Write([]byte(`[{"tag_name":"2.0.0-rc.1","prerelease":true},{"tag_name":"1.0.1","prerelease":false}]`))
+	}))
+	defer server.Close()
+	var output bytes.Buffer
+	if err := runUpdateCheck(context.Background(), &output, server.Client(), server.URL, "1.0.0"); err != nil {
+		t.Fatalf("check: %v", err)
+	}
+	if output.String() != "assign 1.0.1 is available (installed 1.0.0)\nRun: assign update install\n" {
+		t.Fatalf("output = %q", output.String())
+	}
+}
+
+func TestSemverPrereleaseOrdering(t *testing.T) {
+	for _, test := range []struct {
+		left, right string
+		want        int
+	}{
+		{"1.0.0-rc.10", "1.0.0-rc.2", 1},
+		{"1.0.0-rc.2", "1.0.0-rc.beta", -1},
+		{"1.0.0-rc.2.more", "1.0.0-rc.2", 1},
+	} {
+		left, _ := parseSemver(test.left)
+		right, _ := parseSemver(test.right)
+		if got := compareSemver(left, right); got != test.want {
+			t.Fatalf("compareSemver(%q, %q) = %d, want %d", test.left, test.right, got, test.want)
+		}
+	}
+}
+
+func TestUpdateInstallPrintsReleaseInstallerEndpoint(t *testing.T) {
+	var output bytes.Buffer
+	if err := runUpdateInstall(&output); err != nil {
+		t.Fatalf("install guidance: %v", err)
+	}
+	if output.String() != "curl https://assign.so/install.sh | sh\n" {
+		t.Fatalf("install guidance = %q", output.String())
+	}
+}
+
 func TestCommandAliases(t *testing.T) {
 	for _, test := range []struct {
 		alias    string
