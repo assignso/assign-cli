@@ -113,6 +113,7 @@ func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client 
 	root.AddCommand(withAliases(newDoctorCommand(opts)))
 	root.AddCommand(withAliases(newLoginCommand(opts, client)))
 	root.AddCommand(withAliases(newLogoutCommand(opts, client)))
+	root.AddCommand(newMCPCommand(opts, client, runExternalCommand))
 	root.AddCommand(withAliases(newSearchCommand(opts, client)))
 	root.AddCommand(newAliasesCommand())
 	root.AddCommand(withAliases(newTaskCommand(opts, client)))

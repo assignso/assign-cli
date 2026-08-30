@@ -54,6 +54,8 @@ when it is useful—not for every Project, Task, or Document lookup.
 - Start, complete, or reopen a Task with revision protection and idempotent
   requests.
 - Use concise, script-friendly output and predictable exit codes.
+- Configure and authorize the Assign remote MCP server in Codex without sharing
+  the CLI credential.
 - Generate Bash, Zsh, and Fish completion without installing extra tooling.
 
 ```sh
@@ -69,6 +71,9 @@ assign document show release-plan
 
 # Make a safe workflow change
 assign task done PRO-123 --revision 7
+
+# Set up the separately scoped Assign MCP connection in Codex
+assign mcp setup codex
 ```
 
 ## Built for the shell
