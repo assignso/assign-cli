@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -182,5 +183,78 @@ func TestDocumentCommandsListAndShow(t *testing.T) {
 		if output.String() != test.want {
 			t.Fatalf("document %v output = %q", test.args, output.String())
 		}
+	}
+}
+
+func TestProjectAndDocumentBrowserHandoff(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		switch request.URL.Path {
+		case "/api/v1/cli/projects/PRO":
+			_, _ = io.WriteString(response, `{"code":"PRO","name":"Product","path":"product","revision":3,"url":"https://assign.so/acme/projects/product"}`)
+		case "/api/v1/cli/documents/release-plan":
+			_, _ = io.WriteString(response, `{"path":"release-plan","title":"Release plan","visibility":"project","revision":2,"url":"https://assign.so/acme/documents/release-plan"}`)
+		default:
+			t.Fatalf("unexpected path %s", request.URL.Path)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("ASSIGN_TOKEN", "apt_test")
+	opened := ""
+	opts := &options{
+		host:        server.URL,
+		credentials: &memoryCredentialStore{},
+		contexts:    &fileProjectContextStore{path: filepath.Join(t.TempDir(), "context.json")},
+		openURL: func(target string) error {
+			opened = target
+			return nil
+		},
+	}
+
+	var output bytes.Buffer
+	project := newProjectCommand(opts, server.Client())
+	project.SetOut(&output)
+	project.SetArgs([]string{"url", "pro"})
+	if err := project.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if output.String() != "https://assign.so/acme/projects/product\n" {
+		t.Fatalf("project URL output = %q", output.String())
+	}
+
+	document := newDocumentCommand(opts, server.Client())
+	document.SetArgs([]string{"open", "release-plan"})
+	if err := document.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if opened != "https://assign.so/acme/documents/release-plan" {
+		t.Fatalf("opened URL = %q", opened)
+	}
+}
+
+func TestBrowserHandoffRejectsUnsafeURLsAndPreservesSafeURLOnLaunchFailure(t *testing.T) {
+	for _, target := range []string{
+		"http://assign.so/acme/projects/product",
+		"https://user:secret@assign.so/acme/projects/product",
+		"/acme/projects/product",
+	} {
+		var output bytes.Buffer
+		err := printOrOpenURL(&output, &options{}, target, false)
+		if err == nil || !strings.Contains(err.Error(), "invalid browser URL") {
+			t.Fatalf("target %q error = %v", target, err)
+		}
+		if output.Len() != 0 {
+			t.Fatalf("unsafe target %q was printed as %q", target, output.String())
+		}
+	}
+
+	var output bytes.Buffer
+	safe := "https://assign.so/acme/projects/product"
+	err := printOrOpenURL(&output, &options{openURL: func(string) error { return errors.New("unavailable") }}, safe, true)
+	if err == nil || !strings.Contains(err.Error(), "open browser") {
+		t.Fatalf("launch error = %v", err)
+	}
+	if output.String() != safe+"\n" {
+		t.Fatalf("launch failure output = %q", output.String())
 	}
 }

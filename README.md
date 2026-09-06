@@ -67,7 +67,9 @@ assign search "release notes"
 assign workspace switch another-workspace
 assign project switch PRO
 assign project tasks
+assign project open PRO
 assign document show release-plan
+assign document url release-plan
 
 # Make a safe workflow change
 assign task done PRO-123 --revision 7

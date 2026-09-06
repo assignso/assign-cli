@@ -30,6 +30,7 @@ type options struct {
 	host        string
 	credentials credentialStore
 	contexts    projectContextStore
+	openURL     func(string) error
 }
 
 type commandAlias struct {
@@ -75,7 +76,7 @@ func newRootCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 }
 
 func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client *http.Client) *cobra.Command {
-	opts := &options{credentials: defaultCredentialStore(), contexts: defaultProjectContextStore()}
+	opts := &options{credentials: defaultCredentialStore(), contexts: defaultProjectContextStore(), openURL: openBrowser}
 	if client == nil {
 		client = http.DefaultClient
 	}

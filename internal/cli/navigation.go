@@ -142,7 +142,21 @@ func newProjectCommand(opts *options, client *http.Client) *cobra.Command {
 		}
 		return runDocumentList(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, code)
 	}}
-	command.AddCommand(list, current, show, switchCommand, tasks, documents)
+	urlCommand := &cobra.Command{Use: "url [project-code]", Short: "Print a Project's canonical browser URL", Args: cobra.MaximumNArgs(1), RunE: func(command *cobra.Command, args []string) error {
+		code := ""
+		if len(args) == 1 {
+			code = args[0]
+		}
+		return runProjectURL(command.Context(), command.OutOrStdout(), opts, client, code, false)
+	}}
+	openCommand := &cobra.Command{Use: "open [project-code]", Short: "Open a Project in the browser", Args: cobra.MaximumNArgs(1), RunE: func(command *cobra.Command, args []string) error {
+		code := ""
+		if len(args) == 1 {
+			code = args[0]
+		}
+		return runProjectURL(command.Context(), command.OutOrStdout(), opts, client, code, true)
+	}}
+	command.AddCommand(list, current, show, switchCommand, tasks, documents, urlCommand, openCommand)
 	return command
 }
 
@@ -166,7 +180,13 @@ func newDocumentCommand(opts *options, client *http.Client) *cobra.Command {
 	show := &cobra.Command{Use: "show <document-path>", Aliases: []string{"view"}, Short: "Show a Document as text", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
 		return runDocumentShow(command.Context(), command.OutOrStdout(), opts, client, args[0])
 	}}
-	command.AddCommand(list, show)
+	urlCommand := &cobra.Command{Use: "url <document-path>", Short: "Print a Document's canonical browser URL", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
+		return runDocumentURL(command.Context(), command.OutOrStdout(), opts, client, args[0], false)
+	}}
+	openCommand := &cobra.Command{Use: "open <document-path>", Short: "Open a Document in the browser", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
+		return runDocumentURL(command.Context(), command.OutOrStdout(), opts, client, args[0], true)
+	}}
+	command.AddCommand(list, show, urlCommand, openCommand)
 	return command
 }
 
@@ -353,6 +373,14 @@ func runProjectShow(ctx context.Context, output io.Writer, opts *options, client
 	return err
 }
 
+func runProjectURL(ctx context.Context, output io.Writer, opts *options, client *http.Client, code string, launch bool) error {
+	project, err := getProject(ctx, opts, client, code)
+	if err != nil {
+		return err
+	}
+	return printOrOpenURL(output, opts, project.URL, launch)
+}
+
 func runProjectSwitch(ctx context.Context, output io.Writer, opts *options, client *http.Client, code string) error {
 	project, err := getProject(ctx, opts, client, code)
 	if err != nil {
@@ -414,16 +442,9 @@ func runDocumentList(ctx context.Context, output, diagnostics io.Writer, opts *o
 }
 
 func runDocumentShow(ctx context.Context, output io.Writer, opts *options, client *http.Client, path string) error {
-	path = strings.TrimSpace(path)
-	if path == "" {
-		return newExitError(ExitArguments, "Document path is required")
-	}
-	var item cliDocument
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/documents/"+url.PathEscape(path), nil, &item); err != nil {
+	item, err := getDocument(ctx, opts, client, path)
+	if err != nil {
 		return err
-	}
-	if item.Path == "" || item.Title == "" || item.URL == "" {
-		return newExitError(ExitOperation, "Document response is incomplete")
 	}
 	if _, err := fmt.Fprintf(output, "# %s\n\nPath: %s\nVisibility: %s\nURL: %s\nRevision: %d\n", safeInline(item.Title), safeInline(item.Path), safeInline(item.Visibility), safeInline(item.URL), item.Revision); err != nil {
 		return err
@@ -435,6 +456,49 @@ func runDocumentShow(ctx context.Context, output io.Writer, opts *options, clien
 		}
 		_, err := fmt.Fprintf(output, "\n%s%s\n", safeBlock(item.Body), marker)
 		return err
+	}
+	return nil
+}
+
+func getDocument(ctx context.Context, opts *options, client *http.Client, path string) (cliDocument, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return cliDocument{}, newExitError(ExitArguments, "Document path is required")
+	}
+	var item cliDocument
+	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/documents/"+url.PathEscape(path), nil, &item); err != nil {
+		return cliDocument{}, err
+	}
+	if item.Path == "" || item.Title == "" || item.URL == "" {
+		return cliDocument{}, newExitError(ExitOperation, "Document response is incomplete")
+	}
+	return item, nil
+}
+
+func runDocumentURL(ctx context.Context, output io.Writer, opts *options, client *http.Client, path string, launch bool) error {
+	item, err := getDocument(ctx, opts, client, path)
+	if err != nil {
+		return err
+	}
+	return printOrOpenURL(output, opts, item.URL, launch)
+}
+
+func printOrOpenURL(output io.Writer, opts *options, rawURL string, launch bool) error {
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
+		return newExitError(ExitOperation, "Assign returned an invalid browser URL")
+	}
+	if !launch {
+		_, err = fmt.Fprintln(output, parsed.String())
+		return err
+	}
+	opener := opts.openURL
+	if opener == nil {
+		opener = openBrowser
+	}
+	if err := opener(parsed.String()); err != nil {
+		_, _ = fmt.Fprintln(output, parsed.String())
+		return newExitError(ExitOperation, "open browser: %v", err)
 	}
 	return nil
 }
