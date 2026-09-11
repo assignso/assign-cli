@@ -44,7 +44,7 @@ func TestMCPSetupCommandUsesStoredInteractiveLogin(t *testing.T) {
 	}
 	want := []recordedCommand{
 		{name: "codex", args: []string{"mcp", "get", "assign", "--json"}},
-		{name: "codex", args: []string{"mcp", "login", "assign", "--scopes", "assign:read"}},
+		{name: "codex", args: []string{"mcp", "login", "assign", "--scopes", "assign:read", "--oauth-client-registration", assignMCPOAuthRegistration}},
 	}
 	if !reflect.DeepEqual(commands, want) {
 		t.Fatalf("commands = %#v, want %#v", commands, want)
@@ -63,10 +63,10 @@ func TestMCPSetupAddsAndAuthorizesCodexWithoutSharingCLIToken(t *testing.T) {
 		case "mcp get assign --json":
 			_, _ = io.WriteString(diagnostic, "Error: No MCP server named 'assign' found.\n")
 			return errors.New("exit status 1")
-		case "mcp add assign --url https://mcp.assign.so/":
+		case "mcp add assign --url https://mcp.assign.so/ --oauth-resource https://mcp.assign.so/ --oauth-client-registration cimd":
 			_, _ = io.WriteString(output, "Added global MCP server 'assign'.\n")
 			return nil
-		case "mcp login assign --scopes assign:read,assign:write":
+		case "mcp login assign --scopes assign:read,assign:write --oauth-client-registration cimd":
 			_, _ = io.WriteString(output, "Successfully logged in.\n")
 			return nil
 		default:
@@ -86,8 +86,8 @@ func TestMCPSetupAddsAndAuthorizesCodexWithoutSharingCLIToken(t *testing.T) {
 	}
 	want := []recordedCommand{
 		{name: "codex", args: []string{"mcp", "get", "assign", "--json"}},
-		{name: "codex", args: []string{"mcp", "add", "assign", "--url", assignMCPURL}},
-		{name: "codex", args: []string{"mcp", "login", "assign", "--scopes", defaultScopes}},
+		{name: "codex", args: []string{"mcp", "add", "assign", "--url", assignMCPURL, "--oauth-resource", assignMCPURL, "--oauth-client-registration", assignMCPOAuthRegistration}},
+		{name: "codex", args: []string{"mcp", "login", "assign", "--scopes", defaultScopes, "--oauth-client-registration", assignMCPOAuthRegistration}},
 	}
 	if !reflect.DeepEqual(commands, want) {
 		t.Fatalf("commands = %#v, want %#v", commands, want)
@@ -115,7 +115,7 @@ func TestMCPSetupKeepsCompatibleCodexConfiguration(t *testing.T) {
 	}
 	want := []recordedCommand{
 		{name: "codex", args: []string{"mcp", "get", "assign", "--json"}},
-		{name: "codex", args: []string{"mcp", "login", "assign", "--scopes", "assign:read"}},
+		{name: "codex", args: []string{"mcp", "login", "assign", "--scopes", "assign:read", "--oauth-client-registration", assignMCPOAuthRegistration}},
 	}
 	if !reflect.DeepEqual(commands, want) {
 		t.Fatalf("commands = %#v, want %#v", commands, want)

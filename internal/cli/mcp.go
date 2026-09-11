@@ -16,9 +16,10 @@ import (
 )
 
 const (
-	assignMCPName = "assign"
-	assignMCPURL  = "https://mcp.assign.so/"
-	defaultScopes = "assign:read,assign:write"
+	assignMCPName              = "assign"
+	assignMCPURL               = "https://mcp.assign.so/"
+	assignMCPOAuthRegistration = "cimd"
+	defaultScopes              = "assign:read,assign:write"
 )
 
 type externalCommandRunner func(context.Context, io.Reader, io.Writer, io.Writer, string, ...string) error
@@ -86,14 +87,14 @@ func runMCPSetup(ctx context.Context, input io.Reader, output, diagnostic io.Wri
 		return err
 	}
 	if configured == nil {
-		if err := runner(ctx, input, output, diagnostic, "codex", "mcp", "add", assignMCPName, "--url", assignMCPURL); err != nil {
+		if err := runner(ctx, input, output, diagnostic, "codex", "mcp", "add", assignMCPName, "--url", assignMCPURL, "--oauth-resource", assignMCPURL, "--oauth-client-registration", assignMCPOAuthRegistration); err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
 			return externalCommandError(err, "configure Assign MCP in Codex")
 		}
 	}
-	if err := runner(ctx, input, output, diagnostic, "codex", "mcp", "login", assignMCPName, "--scopes", scopes); err != nil {
+	if err := runner(ctx, input, output, diagnostic, "codex", "mcp", "login", assignMCPName, "--scopes", scopes, "--oauth-client-registration", assignMCPOAuthRegistration); err != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
