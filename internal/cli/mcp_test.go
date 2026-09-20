@@ -3,12 +3,15 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os/exec"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -18,147 +21,162 @@ type recordedCommand struct {
 	args []string
 }
 
-func TestMCPSetupCommandUsesStoredInteractiveLogin(t *testing.T) {
-	store := &memoryCredentialStore{value: storedCredential{
-		AccessToken: "cli-access", RefreshToken: "cli-refresh", ExpiresAt: time.Now().Add(time.Hour),
-	}}
-	var commands []recordedCommand
-	runner := func(_ context.Context, _ io.Reader, output, _ io.Writer, name string, args ...string) error {
-		commands = append(commands, recordedCommand{name: name, args: append([]string(nil), args...)})
-		if strings.Join(args, " ") == "mcp get assign --json" {
-			_, _ = io.WriteString(output, `{"enabled":true,"transport":{"type":"streamable_http","url":"https://mcp.assign.so/","bearer_token_env_var":null}}`)
-		}
-		return nil
-	}
-	var output, diagnostic bytes.Buffer
-	command := newMCPCommand(&options{host: defaultHost, credentials: store}, http.DefaultClient, runner)
-	command.SetOut(&output)
-	command.SetErr(&diagnostic)
-	command.SetIn(strings.NewReader(""))
-	command.SetArgs([]string{"setup", "codex", "--scopes", "assign:read"})
-	if err := command.ExecuteContext(context.Background()); err != nil {
-		t.Fatalf("execute: %v", err)
-	}
-	if diagnostic.String() != "" {
-		t.Fatalf("diagnostic = %q", diagnostic.String())
-	}
-	want := []recordedCommand{
-		{name: "codex", args: []string{"mcp", "get", "assign", "--json"}},
-		{name: "codex", args: []string{"mcp", "login", "assign", "--scopes", "assign:read", "--oauth-client-registration", assignMCPOAuthRegistration}},
-	}
-	if !reflect.DeepEqual(commands, want) {
-		t.Fatalf("commands = %#v, want %#v", commands, want)
-	}
-	if strings.Contains(strings.Join(commands[1].args, " "), "cli-access") || strings.Contains(strings.Join(commands[1].args, " "), "cli-refresh") {
-		t.Fatalf("Codex arguments contain CLI credential material: %#v", commands)
-	}
-}
-
-func TestMCPSetupAddsAndAuthorizesCodexWithoutSharingCLIToken(t *testing.T) {
-	var commands []recordedCommand
-	loginChecks := 0
-	runner := func(_ context.Context, _ io.Reader, output, diagnostic io.Writer, name string, args ...string) error {
-		commands = append(commands, recordedCommand{name: name, args: append([]string(nil), args...)})
-		switch strings.Join(args, " ") {
-		case "mcp get assign --json":
-			_, _ = io.WriteString(diagnostic, "Error: No MCP server named 'assign' found.\n")
-			return errors.New("exit status 1")
-		case "mcp add assign --url https://mcp.assign.so/ --oauth-resource https://mcp.assign.so/ --oauth-client-registration cimd":
-			_, _ = io.WriteString(output, "Added global MCP server 'assign'.\n")
-			return nil
-		case "mcp login assign --scopes assign:read,assign:write --oauth-client-registration cimd":
-			_, _ = io.WriteString(output, "Successfully logged in.\n")
-			return nil
-		default:
-			return errors.New("unexpected command")
-		}
-	}
-	var output, diagnostic bytes.Buffer
-	err := runMCPSetup(context.Background(), strings.NewReader(""), &output, &diagnostic, defaultScopes, func(context.Context) error {
-		loginChecks++
-		return nil
-	}, runner)
-	if err != nil {
-		t.Fatalf("setup: %v", err)
-	}
-	if loginChecks != 1 {
-		t.Fatalf("login checks = %d", loginChecks)
-	}
-	want := []recordedCommand{
-		{name: "codex", args: []string{"mcp", "get", "assign", "--json"}},
-		{name: "codex", args: []string{"mcp", "add", "assign", "--url", assignMCPURL, "--oauth-resource", assignMCPURL, "--oauth-client-registration", assignMCPOAuthRegistration}},
-		{name: "codex", args: []string{"mcp", "login", "assign", "--scopes", defaultScopes, "--oauth-client-registration", assignMCPOAuthRegistration}},
-	}
-	if !reflect.DeepEqual(commands, want) {
-		t.Fatalf("commands = %#v, want %#v", commands, want)
-	}
-	if strings.Contains(output.String(), "access_token") || strings.Contains(output.String(), "refresh_token") {
-		t.Fatalf("output contains token material: %q", output.String())
-	}
-	if !strings.Contains(output.String(), "separate, revocable MCP credential") {
-		t.Fatalf("output = %q", output.String())
-	}
-}
-
-func TestMCPSetupKeepsCompatibleCodexConfiguration(t *testing.T) {
-	var commands []recordedCommand
-	runner := func(_ context.Context, _ io.Reader, output, _ io.Writer, name string, args ...string) error {
-		commands = append(commands, recordedCommand{name: name, args: append([]string(nil), args...)})
-		if strings.Join(args, " ") == "mcp get assign --json" {
-			_, _ = io.WriteString(output, `{"enabled":true,"transport":{"type":"streamable_http","url":"https://mcp.assign.so/","bearer_token_env_var":null}}`)
-		}
-		return nil
-	}
-	var output bytes.Buffer
-	if err := runMCPSetup(context.Background(), strings.NewReader(""), &output, io.Discard, "assign:read", func(context.Context) error { return nil }, runner); err != nil {
-		t.Fatalf("setup: %v", err)
-	}
-	want := []recordedCommand{
-		{name: "codex", args: []string{"mcp", "get", "assign", "--json"}},
-		{name: "codex", args: []string{"mcp", "login", "assign", "--scopes", "assign:read", "--oauth-client-registration", assignMCPOAuthRegistration}},
-	}
-	if !reflect.DeepEqual(commands, want) {
-		t.Fatalf("commands = %#v, want %#v", commands, want)
-	}
-}
-
-func TestMCPSetupRefusesIncompatibleCodexConfiguration(t *testing.T) {
-	configurations := map[string]string{
-		"different URL": `{"enabled":true,"transport":{"type":"streamable_http","url":"https://example.com/mcp","bearer_token_env_var":null}}`,
-		"stdio":         `{"enabled":true,"transport":{"type":"stdio"}}`,
-		"bearer env":    `{"enabled":true,"transport":{"type":"streamable_http","url":"https://mcp.assign.so/","bearer_token_env_var":"ASSIGN_MCP_TOKEN"}}`,
-		"disabled":      `{"enabled":false,"transport":{"type":"streamable_http","url":"https://mcp.assign.so/","bearer_token_env_var":null}}`,
-	}
-	for name, configuration := range configurations {
-		t.Run(name, func(t *testing.T) {
-			runner := func(_ context.Context, _ io.Reader, output, _ io.Writer, _ string, _ ...string) error {
-				_, _ = io.WriteString(output, configuration)
+func TestMCPSetupPreservesRemoteDefaultAndAddsExplicitStdio(t *testing.T) {
+	for _, tc := range []struct {
+		name, transport string
+		want            []recordedCommand
+	}{
+		{"remote", "remote", []recordedCommand{{"codex", []string{"mcp", "get", "assign", "--json"}}, {"codex", []string{"mcp", "add", "assign", "--url", assignMCPURL, "--oauth-resource", assignMCPURL, "--oauth-client-registration", "cimd"}}, {"codex", []string{"mcp", "login", "assign", "--scopes", defaultScopes, "--oauth-client-registration", "cimd"}}}},
+		{"stdio read only", "stdio", []recordedCommand{{"codex", []string{"mcp", "get", "assign", "--json"}}, {"codex", []string{"mcp", "add", "assign", "--", "assign", "mcp", "serve", "--scopes", "assign:read"}}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got []recordedCommand
+			runner := func(_ context.Context, _ io.Reader, _ io.Writer, diagnostic io.Writer, name string, args ...string) error {
+				got = append(got, recordedCommand{name, append([]string(nil), args...)})
+				if strings.Join(args, " ") == "mcp get assign --json" {
+					_, _ = io.WriteString(diagnostic, "No MCP server named 'assign' found")
+					return errors.New("missing")
+				}
 				return nil
 			}
-			loginChecks := 0
-			err := runMCPSetup(context.Background(), strings.NewReader(""), io.Discard, io.Discard, defaultScopes, func(context.Context) error {
-				loginChecks++
-				return nil
-			}, runner)
-			if exitCode(err) != ExitConflict || !strings.Contains(err.Error(), "incompatible MCP server") {
-				t.Fatalf("error = %v", err)
+			scopes := defaultScopes
+			if tc.transport == "stdio" {
+				scopes = "assign:read"
 			}
-			if loginChecks != 0 {
-				t.Fatalf("login checks = %d", loginChecks)
+			if err := runMCPSetup(context.Background(), strings.NewReader(""), io.Discard, io.Discard, tc.transport, scopes, func(context.Context) error { return nil }, runner); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("commands=%#v want=%#v", got, tc.want)
 			}
 		})
 	}
 }
 
-func TestMCPSetupValidatesScopesAndReportsMissingCodex(t *testing.T) {
-	if _, err := canonicalMCPScopes("assign:write"); exitCode(err) != ExitArguments {
-		t.Fatalf("scope error = %v", err)
+func TestMCPSetupRefusesConflictingTransport(t *testing.T) {
+	runner := func(_ context.Context, _ io.Reader, output, _ io.Writer, _ string, _ ...string) error {
+		_, _ = io.WriteString(output, `{"enabled":true,"transport":{"type":"streamable_http","url":"https://mcp.assign.so/"}}`)
+		return nil
 	}
+	err := runMCPSetup(context.Background(), strings.NewReader(""), io.Discard, io.Discard, "stdio", "assign:read", func(context.Context) error { t.Fatal("login must not run"); return nil }, runner)
+	if exitCode(err) != ExitConflict {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestMCPStdioStreamsSSEAndRetainsSessionHeaders(t *testing.T) {
+	store := &memoryCredentialStore{value: storedCredential{AccessToken: "cli-access", RefreshToken: "cli-refresh", ExpiresAt: time.Now().Add(time.Hour)}}
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer cli-access" {
+			t.Fatalf("API auth=%q", r.Header.Get("Authorization"))
+		}
+		w.WriteHeader(http.StatusCreated)
+		_, _ = io.WriteString(w, `{"access_token":"mcp-access","token_type":"Bearer","scopes":["assign:read"],"expires_in":900,"workspace_id":"11111111-1111-1111-1111-111111111111"}`)
+	}))
+	defer api.Close()
+	var calls atomic.Int32
+	mcp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := calls.Add(1)
+		if r.Header.Get("Authorization") != "Bearer mcp-access" {
+			t.Fatalf("MCP auth=%q", r.Header.Get("Authorization"))
+		}
+		if n == 1 {
+			w.Header().Set("Mcp-Session-Id", "session-1")
+		} else if r.Header.Get("Mcp-Session-Id") != "session-1" || r.Header.Get("MCP-Protocol-Version") != "2025-11-25" {
+			t.Fatalf("headers=%v", r.Header)
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "event: message\ndata: {\"jsonrpc\":\"2.0\",\ndata: \"id\":"+string(rune('0'+n))+",\"result\":{}}\n\n")
+	}))
+	defer mcp.Close()
+	input := strings.NewReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\"}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}\n")
+	var output bytes.Buffer
+	if err := runMCPStdio(context.Background(), input, &output, io.Discard, api.URL, mcp.URL, api.Client(), store, []string{"assign:read"}); err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 2 || strings.Count(output.String(), "\n") != 2 {
+		t.Fatalf("calls=%d output=%q", calls.Load(), output.String())
+	}
+}
+
+func TestMCPStdioRejectsRedirectAndOversizedInput(t *testing.T) {
+	if err := runMCPStdio(context.Background(), strings.NewReader("{}\n"), io.Discard, io.Discard, "http://localhost", "http://example.com", http.DefaultClient, &memoryCredentialStore{}, []string{"assign:read"}); exitCode(err) != ExitArguments {
+		t.Fatalf("endpoint error=%v", err)
+	}
+	input := strings.NewReader("{\"value\":\"" + strings.Repeat("x", mcpMessageLimit) + "\"}\n")
+	err := runMCPStdio(context.Background(), input, io.Discard, io.Discard, "http://localhost", "http://localhost", http.DefaultClient, &memoryCredentialStore{}, []string{"assign:read"})
+	if err == nil {
+		t.Fatal("expected scanner limit")
+	}
+}
+
+func TestMCPStdioCancellationInterruptsActiveUpstreamRequest(t *testing.T) {
+	store := &memoryCredentialStore{value: storedCredential{AccessToken: "cli-access", RefreshToken: "cli-refresh", ExpiresAt: time.Now().Add(time.Hour)}}
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, _ = io.WriteString(w, `{"access_token":"mcp-access","token_type":"Bearer","scopes":["assign:read"],"expires_in":900,"workspace_id":"11111111-1111-1111-1111-111111111111"}`)
+	}))
+	defer api.Close()
+	initialized, active, cancelled := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	mcp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var envelope mcpEnvelope
+		if err := json.NewDecoder(r.Body).Decode(&envelope); err != nil {
+			t.Errorf("decode upstream request: %v", err)
+			return
+		}
+		switch envelope.Method {
+		case "initialize":
+			close(initialized)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"jsonrpc":"2.0","id":1,"result":{}}`)
+		case "tools/call":
+			close(active)
+			<-r.Context().Done()
+			close(cancelled)
+		case "notifications/cancelled":
+			w.WriteHeader(http.StatusAccepted)
+		default:
+			t.Errorf("unexpected method %q", envelope.Method)
+		}
+	}))
+	defer mcp.Close()
+	inputReader, inputWriter := io.Pipe()
+	result := make(chan error, 1)
+	go func() {
+		result <- runMCPStdio(context.Background(), inputReader, io.Discard, io.Discard, api.URL, mcp.URL, api.Client(), store, []string{"assign:read"})
+	}()
+	_, _ = io.WriteString(inputWriter, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}}`+"\n")
+	waitForSignal(t, initialized, "initialize")
+	_, _ = io.WriteString(inputWriter, `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{}}`+"\n")
+	waitForSignal(t, active, "active call")
+	_, _ = io.WriteString(inputWriter, `{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":2}}`+"\n")
+	waitForSignal(t, cancelled, "upstream cancellation")
+	_ = inputWriter.Close()
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatalf("bridge after cancellation: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("bridge did not shut down after cancellation")
+	}
+}
+
+func waitForSignal(t *testing.T, signal <-chan struct{}, name string) {
+	t.Helper()
+	select {
+	case <-signal:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timed out waiting for %s", name)
+	}
+}
+
+func TestMCPSetupReportsMissingCodex(t *testing.T) {
 	runner := func(context.Context, io.Reader, io.Writer, io.Writer, string, ...string) error {
 		return &exec.Error{Name: "codex", Err: exec.ErrNotFound}
 	}
-	err := runMCPSetup(context.Background(), strings.NewReader(""), io.Discard, io.Discard, defaultScopes, func(context.Context) error { return nil }, runner)
+	err := runMCPSetup(context.Background(), strings.NewReader(""), io.Discard, io.Discard, "remote", defaultScopes, func(context.Context) error { return nil }, runner)
 	if exitCode(err) != ExitOperation || !strings.Contains(err.Error(), "Codex CLI is not installed") {
-		t.Fatalf("error = %v", err)
+		t.Fatalf("error=%v", err)
 	}
 }
