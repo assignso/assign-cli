@@ -20,11 +20,14 @@ try {
   if (-not $expected -or (Get-FileHash (Join-Path $temp $archive) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected.ToLowerInvariant()) { throw 'Release checksum verification failed.' }
   Expand-Archive -Path (Join-Path $temp $archive) -DestinationPath $temp -Force
   $binary = Join-Path $temp 'assign.exe'
+  $discussBinary = Join-Path $temp 'assign-discuss.exe'
   if (-not (Test-Path $binary)) { throw 'Release archive did not contain assign.exe.' }
-  if ((Get-AuthenticodeSignature $binary).Status -ne 'Valid') { throw 'The Assign release is not Authenticode signed; installation stopped.' }
+  if (-not (Test-Path $discussBinary)) { throw 'Release archive did not contain assign-discuss.exe.' }
+  if ((Get-AuthenticodeSignature $binary).Status -ne 'Valid' -or (Get-AuthenticodeSignature $discussBinary).Status -ne 'Valid') { throw 'The Assign release executables are not Authenticode signed; installation stopped.' }
   New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+  Copy-Item $discussBinary (Join-Path $installDir 'assign-discuss.exe') -Force
   Copy-Item $binary (Join-Path $installDir 'assign.exe') -Force
   $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
   if (($userPath -split ';') -notcontains $installDir) { [Environment]::SetEnvironmentVariable('Path', (($userPath.TrimEnd(';') + ';' + $installDir).TrimStart(';')), 'User') }
-  Write-Output "Installed assign $version to $installDir\assign.exe. Open a new terminal, then run: assign login"
+  Write-Output "Installed assign $version to $installDir. Open a new terminal, then run: assign login"
 } finally { Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }

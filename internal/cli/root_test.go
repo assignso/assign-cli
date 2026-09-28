@@ -308,3 +308,70 @@ func TestDoctorRequiresAuthentication(t *testing.T) {
 		t.Fatalf("doctor result = (%d, %q, %q)", code, stdout, stderr)
 	}
 }
+
+func TestTaskShowPrintsRevisionForLifecycleActions(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/api/v1/cli/tasks/PRO-123":
+			response.Header().Set("Content-Type", "application/json")
+			_, _ = response.Write([]byte(`{"code":"PRO-123","project_code":"PRO","title":"Ship\u001b[31m now","status_category":"in_progress","revision":7,"url":"https://app.assign.so/app/assign/tasks/PRO-123"}`))
+		case "/api/v1/cli/tasks/PRO-404":
+			http.NotFound(response, request)
+		default:
+			t.Fatalf("unexpected path %s", request.URL.Path)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("ASSIGN_TOKEN", "apt_test")
+
+	for _, test := range []struct {
+		args []string
+		exit int
+		want string
+	}{
+		{args: []string{"task", "show", "pro-123"}, want: "# PRO-123  Ship [31m now\n\nProject: PRO\nStatus: in_progress\nURL: https://app.assign.so/app/assign/tasks/PRO-123\nRevision: 7\n"},
+		{args: []string{"t", "view", "PRO-123", "--field", "revision"}, want: "7\n"},
+		{args: []string{"task", "show", "PRO-123", "--field", "status"}, want: "in_progress\n"},
+		{args: []string{"task", "show", "PRO-123", "--field", "assignee"}, exit: ExitArguments},
+		{args: []string{"task", "show", "PRO-404"}, exit: ExitContext},
+	} {
+		var stdout, stderr bytes.Buffer
+		command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
+		command.SetArgs(append([]string{"--host", server.URL}, test.args...))
+		err := command.ExecuteContext(context.Background())
+		if test.exit != 0 {
+			if err == nil || exitCode(err) != test.exit || stdout.Len() != 0 {
+				t.Fatalf("%v: err=%v exit=%d stdout=%q, want exit %d", test.args, err, exitCode(err), stdout.String(), test.exit)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("%v: %v", test.args, err)
+		}
+		if stdout.String() != test.want {
+			t.Fatalf("%v output = %q, want %q", test.args, stdout.String(), test.want)
+		}
+	}
+}
+
+func TestTaskActionConflictPointsToTaskShow(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusConflict)
+	}))
+	defer server.Close()
+	t.Setenv("ASSIGN_TOKEN", "apt_test")
+	var stdout, stderr bytes.Buffer
+	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
+	command.SetArgs([]string{"--host", server.URL, "start", "pro-9", "--revision", "3"})
+	err := command.ExecuteContext(context.Background())
+	if err == nil || exitCode(err) != ExitConflict || !strings.Contains(err.Error(), "assign task show PRO-9") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestTaskActionWithoutRevisionPointsToTaskShow(t *testing.T) {
+	code, _, stderr := run(t, "done", "PRO-9")
+	if code != ExitArguments || !strings.Contains(stderr, "assign task show") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+}

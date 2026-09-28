@@ -1,3 +1,6 @@
 /assign
 /dist/
+/terminal/build/
+/terminal/dist/
+/terminal/node_modules/
 coverage.out

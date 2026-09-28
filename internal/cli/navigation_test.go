@@ -17,9 +17,9 @@ func TestWorkspaceCommandsListCurrentAndShow(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		response.Header().Set("Content-Type", "application/json")
 		switch request.URL.Path {
-		case "/api/v1/cli/workspace":
+		case "/api/v1/dev/workspace":
 			_, _ = io.WriteString(response, `{"name":"Assign","slug":"assign","role":"owner"}`)
-		case "/api/v1/cli/workspaces":
+		case "/api/v1/dev/workspaces":
 			_, _ = io.WriteString(response, `{"items":[{"name":"Assign","slug":"assign","role":"owner"},{"name":"Labs","slug":"labs","role":"member"}],"next_cursor":null,"has_more":false}`)
 		default:
 			t.Fatalf("unexpected path %s", request.URL.Path)
@@ -53,7 +53,7 @@ func TestWorkspaceCommandsListCurrentAndShow(t *testing.T) {
 
 func TestWorkspaceSwitchStoresRotatedCredential(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.Method != http.MethodPut || request.URL.Path != "/api/v1/cli/workspace" || request.Header.Get("Authorization") != "Bearer cli_at_old" {
+		if request.Method != http.MethodPut || request.URL.Path != "/api/v1/dev/workspace" || request.Header.Get("Authorization") != "Bearer cli_at_old" {
 			t.Fatalf("request = %s %s auth=%q", request.Method, request.URL.Path, request.Header.Get("Authorization"))
 		}
 		body, _ := io.ReadAll(request.Body)
@@ -99,7 +99,7 @@ func TestProjectCommandsListSwitchShowAndTasks(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		response.Header().Set("Content-Type", "application/json")
 		switch request.URL.Path {
-		case "/api/v1/cli/workspace":
+		case "/api/v1/dev/workspace":
 			_, _ = io.WriteString(response, `{"name":"Assign","slug":"assign","role":"owner"}`)
 		case "/api/v1/cli/projects":
 			_, _ = io.WriteString(response, `{"items":[{"code":"PRO","name":"Product","path":"product","revision":3,"url":"https://app.assign.so/app/assign/projects/product"}],"next_cursor":null,"has_more":false}`)

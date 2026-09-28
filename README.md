@@ -51,8 +51,10 @@ when it is useful—not for every Project, Task, or Document lookup.
   automatically through your operating system’s credential vault when available.
 - See My Work, search Tasks and Documents, and move between Workspaces.
 - List, select, and inspect Projects and their Tasks or Documents.
-- Start, complete, or reopen a Task with revision protection and idempotent
-  requests.
+- Show a Task with its current revision, then start, complete, or reopen it
+  with revision protection and idempotent requests.
+- Discuss work in a full-screen terminal client with typed Task, action,
+  approval, clarification, evidence, and activity widgets.
 - Use concise, script-friendly output and predictable exit codes.
 - Configure and authorize the Assign remote MCP server in Codex without sharing
   the CLI credential.
@@ -62,6 +64,7 @@ when it is useful—not for every Project, Task, or Document lookup.
 # Find your work
 assign
 assign search "release notes"
+assign discuss
 
 # Keep context close
 assign workspace switch another-workspace
@@ -72,11 +75,31 @@ assign document show release-plan
 assign document url release-plan
 
 # Make a safe workflow change
+assign task show PRO-123                 # prints the Task, including Revision: 7
 assign task done PRO-123 --revision 7
+assign task done PRO-123 --revision "$(assign task show PRO-123 --field revision)"
 
 # Set up the separately scoped Assign MCP connection in Codex
 assign mcp setup codex
 ```
+
+`assign discuss` opens the current Workspace's canonical Discuss thread in an
+interactive terminal. It requires a TTY. Availability follows the Workspace
+plan: full access includes the composer, read-only access keeps history
+visible, and preview access shows the upgrade boundary without loading private
+history.
+
+The Go CLI keeps ownership of the credential. The bundled terminal renderer
+talks to a short-lived loopback broker and never receives the access or refresh
+token. Installers include the renderer, so Node.js and Bun are not runtime
+requirements. CLI sessions created before the Discuss scope was introduced
+must run `assign login` once. A personal API token needs the
+`assign:discuss` scope.
+
+Responses stream into the canonical transcript and reconnect with server-issued
+cursors. Task, source, and saved-work widgets print exact Assign Web URLs when
+the server provides a trusted identity and version; opening them rechecks your
+current Workspace access.
 
 ## Built for the shell
 
@@ -142,4 +165,47 @@ Generate shell completion during development:
 ./assign completion zsh > _assign
 ```
 
+Build and test the bundled terminal renderer:
+
+```sh
+cd terminal
+npm ci
+npm run typecheck
+npm test
+npm run build:all
+```
+
 Release archives target macOS, Linux, and Windows on both `amd64` and `arm64`.
+
+## Loop workflow primitives (upcoming)
+
+Read one bounded Task page and pass selected context to your external work runner:
+
+```sh
+assign project tasks PRO --limit 50 --format json
+assign task context PRO-123 --compact
+assign task create "Implement one acceptance gate" --project PRO --field code
+printf '%s\n' 'Prepared checks passed; parent integration remains open.' | assign task comment PRO-123 -
+```
+
+Task pages accept an opaque `--cursor`, `--limit` (1–100) and scalar `--field code`,
+`next_cursor` or `has_more`. The command-specific JSON format includes both Tasks
+and continuation under `assign.cli.task-page.v1`. Context defaults to 16 KiB;
+`--full` uses 64 KiB. Read stderr for omitted or truncated context.
+
+Create/comment/start/done/reopen accept `--idempotency-key` for an identical retry.
+Keep the original arguments and revision when reconciling an uncertain write;
+a newly decided operation needs a new key. Descriptions/comments accept `-` for
+nonempty UTF-8 stdin, capped at 256 KiB plus the existing encoded-payload limit.
+
+The external host owns Agent execution, run limits and cancellation. These CLI
+primitives do not automatically link subtasks, select Milestones, infer readiness
+or complete parents. They are implemented locally and have not been released.
+
+### Milestone reads (implemented locally, awaiting qualification/release)
+
+`assign milestone show FRS-M1` reads one authorized Milestone and canonical Task progress using the existing bearer transport. Use `--field revision` for a scalar or `--json` for the canonical projection; these flags are mutually exclusive. The Milestone number is decimal text, with ASCII case normalization and strict signed-64-bit bounds. Missing/inconsistent reference or progress data fails rather than showing false zero. This is read-only; it does not launch or complete work. See the [owning contract](../architecture/core/milestone-references.md#cli-credential-and-show-parity--asg-209-continuation-2026-09-28) and [command guide](../docs/cli/commands.md). No tests/builds/CI were run under the current Core/Web gate.
+
+`assign milestone tasks FRS-M1` reads one checked member-Task page through the existing canonical Workspace Task query. Use explicit `--limit`/`--cursor`, `--format json` for scope/revision/coverage or `--field code|next_cursor|coverage`. Partial pages retain coverage; stale or scan-limit results exit nonzero, including when there is no next cursor. This is membership selection across all non-archived statuses, not runnable-work or completion proof. [Owning contract](../architecture/core/milestone-references.md#bounded-cli-membership-selection--asg-209-continuation-2026-09-28). Implemented locally, unverified, awaiting release; no checks ran under the full Core/Web gate.
+
+`assign task context FRS-12 --milestone FRS-M1 --compact` adds canonical membership/revision observations before and after the bounded context fetch. Archived, mismatched, changed or inaccessible scope fails before output. Successful Markdown records the observed scope/revisions; the header and context together retain the 16/64 KiB cap. Five application reads do not constitute an atomic claim or complete dependency snapshot. [Owning contract](../architecture/core/milestone-references.md#milestone-scoped-task-context--asg-209-continuation-2026-09-28). Implemented locally, unverified, awaiting qualification/release.

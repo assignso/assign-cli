@@ -17,6 +17,7 @@ import (
 )
 
 type cliWorkspace struct {
+	ID   string `json:"id"`
 	Name string `json:"name"`
 	Slug string `json:"slug"`
 	Role string `json:"role"`
@@ -124,13 +125,7 @@ func newProjectCommand(opts *options, client *http.Client) *cobra.Command {
 	switchCommand := &cobra.Command{Use: "switch <project-code>", Aliases: []string{"use", "sw"}, Short: "Select the current Project", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
 		return runProjectSwitch(command.Context(), command.OutOrStdout(), opts, client, args[0])
 	}}
-	tasks := &cobra.Command{Use: "tasks [project-code]", Aliases: []string{"t"}, Short: "List a Project's Tasks", Args: cobra.MaximumNArgs(1), RunE: func(command *cobra.Command, args []string) error {
-		code := ""
-		if len(args) == 1 {
-			code = args[0]
-		}
-		return runProjectTasks(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, code)
-	}}
+	tasks := newProjectTaskListCommand(opts, client)
 	documents := &cobra.Command{Use: "documents [project-code]", Aliases: []string{"docs", "doc"}, Short: "List a Project's Documents", Args: cobra.MaximumNArgs(1), RunE: func(command *cobra.Command, args []string) error {
 		code := ""
 		if len(args) == 1 {
@@ -228,7 +223,7 @@ func authorizedJSON(ctx context.Context, opts *options, client *http.Client, met
 		return newExitError(ExitAuthentication, "this command requires interactive CLI login")
 	}
 	if response.StatusCode == http.StatusNotFound {
-		return newExitError(ExitContext, "the requested Workspace, Project, or Document was not found")
+		return newExitError(ExitContext, "the requested Workspace, Project, Task, or Document was not found")
 	}
 	if response.StatusCode != http.StatusOK {
 		return newExitError(ExitOperation, "Assign request failed with HTTP %d", response.StatusCode)
@@ -245,7 +240,7 @@ func authorizedJSON(ctx context.Context, opts *options, client *http.Client, met
 
 func currentWorkspace(ctx context.Context, opts *options, client *http.Client) (cliWorkspace, error) {
 	var workspace cliWorkspace
-	err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/workspace", nil, &workspace)
+	err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/dev/workspace", nil, &workspace)
 	if err == nil && (workspace.Slug == "" || workspace.Name == "") {
 		err = newExitError(ExitOperation, "Workspace response is incomplete")
 	}
@@ -270,7 +265,7 @@ func runWorkspaceList(ctx context.Context, output, diagnostics io.Writer, opts *
 		Items   []cliWorkspace `json:"items"`
 		HasMore bool           `json:"has_more"`
 	}
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/workspaces?limit=100", nil, &page); err != nil {
+	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/dev/workspaces?limit=100", nil, &page); err != nil {
 		return err
 	}
 	for _, workspace := range page.Items {
@@ -294,7 +289,7 @@ func runWorkspaceSwitch(ctx context.Context, output io.Writer, opts *options, cl
 		RefreshToken string       `json:"refresh_token"`
 		ExpiresIn    int64        `json:"expires_in"`
 	}
-	if err := authorizedJSON(ctx, opts, client, http.MethodPut, "/api/v1/cli/workspace", map[string]string{"slug": strings.TrimSpace(slug)}, &result); err != nil {
+	if err := authorizedJSON(ctx, opts, client, http.MethodPut, "/api/v1/dev/workspace", map[string]string{"slug": strings.TrimSpace(slug)}, &result); err != nil {
 		return err
 	}
 	if result.Workspace.Slug == "" || result.AccessToken == "" || result.RefreshToken == "" || result.ExpiresIn < 1 {
@@ -396,26 +391,6 @@ func runProjectSwitch(ctx context.Context, output io.Writer, opts *options, clie
 	}
 	_, err = fmt.Fprintln(output, project.Code)
 	return err
-}
-
-func runProjectTasks(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client, code string) error {
-	code, err := resolveProjectCode(ctx, opts, client, code)
-	if err != nil {
-		return err
-	}
-	var page cliMyWorkResponse
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/projects/"+url.PathEscape(code)+"/tasks?limit=100", nil, &page); err != nil {
-		return err
-	}
-	for _, task := range page.Items {
-		if _, err := fmt.Fprintf(output, "%s  %s\n", safeInline(task.Code), safeInline(task.Title)); err != nil {
-			return err
-		}
-	}
-	if page.HasMore {
-		_, _ = fmt.Fprintln(diagnostics, "assign: more Tasks are available; only the first 100 are shown")
-	}
-	return nil
 }
 
 func runDocumentList(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client, projectCode string) error {

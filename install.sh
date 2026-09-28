@@ -45,18 +45,21 @@ fi
 test "$actual" = "$expected"
 tar -xzf "$temp_dir/$archive" -C "$temp_dir"
 test -f "$temp_dir/assign"
-chmod 0755 "$temp_dir/assign"
+test -f "$temp_dir/assign-discuss"
+chmod 0755 "$temp_dir/assign" "$temp_dir/assign-discuss"
 
 if [ "$os" = darwin ]; then
-  if ! spctl --assess --type execute "$temp_dir/assign" >/dev/null 2>&1; then
+  if ! spctl --assess --type execute "$temp_dir/assign" >/dev/null 2>&1 ||
+     ! spctl --assess --type execute "$temp_dir/assign-discuss" >/dev/null 2>&1; then
     echo "The Assign release is not accepted by macOS Gatekeeper. It must be Developer ID signed and notarized; installation stopped." >&2
     exit 1
   fi
 fi
 
 mkdir -p "$install_dir"
+install -m 0755 "$temp_dir/assign-discuss" "$install_dir/assign-discuss"
 install -m 0755 "$temp_dir/assign" "$install_dir/assign"
-echo "Installed assign $version to $install_dir/assign"
+echo "Installed assign $version to $install_dir"
 case ":$PATH:" in
   *":$install_dir:"*) ;;
   *) echo "Add $install_dir to your PATH, then run: assign login" ;;

@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -31,6 +32,8 @@ type options struct {
 	credentials credentialStore
 	contexts    projectContextStore
 	openURL     func(string) error
+	runDiscuss  func(context.Context, string, []string, io.Reader, io.Writer, io.Writer) error
+	isTerminal  func(io.Reader, io.Writer) bool
 }
 
 type commandAlias struct {
@@ -76,7 +79,7 @@ func newRootCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 }
 
 func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client *http.Client) *cobra.Command {
-	opts := &options{credentials: defaultCredentialStore(), contexts: defaultProjectContextStore(), openURL: openBrowser}
+	opts := &options{credentials: defaultCredentialStore(), contexts: defaultProjectContextStore(), openURL: openBrowser, runDiscuss: runDiscussSidecar, isTerminal: isInteractiveTerminal}
 	if client == nil {
 		client = http.DefaultClient
 	}
@@ -115,9 +118,11 @@ func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client 
 	root.AddCommand(withAliases(newLoginCommand(opts, client)))
 	root.AddCommand(withAliases(newLogoutCommand(opts, client)))
 	root.AddCommand(newMCPCommand(opts, client, runExternalCommand))
+	root.AddCommand(newDiscussCommand(opts, client))
 	root.AddCommand(withAliases(newSearchCommand(opts, client)))
 	root.AddCommand(newAliasesCommand())
 	root.AddCommand(withAliases(newTaskCommand(opts, client)))
+	root.AddCommand(newMilestoneCommand(opts, client))
 	root.AddCommand(withAliases(newWorkspaceCommand(opts, client)))
 	root.AddCommand(withAliases(newProjectCommand(opts, client)))
 	root.AddCommand(withAliases(newDocumentCommand(opts, client)))
@@ -176,74 +181,126 @@ func newTaskCommand(opts *options, client *http.Client) *cobra.Command {
 		Short: "Work with Tasks",
 		Args:  noArgs,
 	}
+	command.AddCommand(newTaskShowCommand(opts, client))
+	command.AddCommand(newTaskContextCommand(opts, client), newTaskCommentCommand(opts, client), newTaskCommentsCommand(opts, client), newTaskCreateCommand(opts, client))
 	command.AddCommand(newTaskActionCommand("start", "Start and assign a Task", opts, client))
 	command.AddCommand(newTaskActionCommand("done", "Complete a Task", opts, client))
 	command.AddCommand(newTaskActionCommand("reopen", "Reopen a Task", opts, client))
 	return command
 }
 
+type cliTask struct {
+	Code           string `json:"code"`
+	ProjectCode    string `json:"project_code"`
+	Title          string `json:"title"`
+	StatusCategory string `json:"status_category"`
+	Revision       int64  `json:"revision"`
+	URL            string `json:"url"`
+}
+
+// taskFields are the scalar values `task show --field` prints. The names are
+// a scripting contract, so add to this list rather than renaming entries.
+var taskFields = []string{"code", "title", "project", "status", "revision", "url"}
+
+func newTaskShowCommand(opts *options, client *http.Client) *cobra.Command {
+	var field string
+	command := &cobra.Command{
+		Use:     "show <task-code>",
+		Aliases: []string{"view"},
+		Short:   "Show a Task and its current revision",
+		Args:    exactArgs(1),
+		RunE: func(command *cobra.Command, args []string) error {
+			return runTaskShow(command.Context(), command.OutOrStdout(), opts, client, args[0], field)
+		},
+	}
+	command.Flags().StringVar(&field, "field", "", "Print only one field: "+strings.Join(taskFields, ", "))
+	_ = command.RegisterFlagCompletionFunc("field", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+		return taskFields, cobra.ShellCompDirectiveNoFileComp
+	})
+	return command
+}
+
+func runTaskShow(ctx context.Context, output io.Writer, opts *options, client *http.Client, code, field string) error {
+	field = strings.ToLower(strings.TrimSpace(field))
+	if field != "" && !slices.Contains(taskFields, field) {
+		return newExitError(ExitArguments, "unsupported --field %q; expected one of %s", field, strings.Join(taskFields, ", "))
+	}
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if code == "" {
+		return newExitError(ExitArguments, "Task code must not be empty")
+	}
+	var item cliTask
+	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/tasks/"+url.PathEscape(code), nil, &item); err != nil {
+		return err
+	}
+	if item.Code == "" || item.Title == "" || item.ProjectCode == "" || item.StatusCategory == "" || item.Revision < 1 || item.URL == "" {
+		return newExitError(ExitOperation, "Task response is incomplete")
+	}
+	var err error
+	switch field {
+	case "":
+		_, err = fmt.Fprintf(output, "# %s  %s\n\nProject: %s\nStatus: %s\nURL: %s\nRevision: %d\n", safeInline(item.Code), safeInline(item.Title), safeInline(item.ProjectCode), safeInline(item.StatusCategory), safeInline(item.URL), item.Revision)
+	case "code":
+		_, err = fmt.Fprintln(output, safeInline(item.Code))
+	case "title":
+		_, err = fmt.Fprintln(output, safeInline(item.Title))
+	case "project":
+		_, err = fmt.Fprintln(output, safeInline(item.ProjectCode))
+	case "status":
+		_, err = fmt.Fprintln(output, safeInline(item.StatusCategory))
+	case "revision":
+		_, err = fmt.Fprintln(output, item.Revision)
+	case "url":
+		_, err = fmt.Fprintln(output, safeInline(item.URL))
+	}
+	return err
+}
+
 func newTaskActionCommand(action, description string, opts *options, client *http.Client) *cobra.Command {
 	var revision int64
+	var key string
 	command := &cobra.Command{
 		Use:   action + " <task-code>",
 		Short: description,
 		Args:  exactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			if revision < 1 {
-				return newExitError(ExitArguments, "--revision must be a positive Task revision")
+				return newExitError(ExitArguments, "--revision must be a positive Task revision; run assign task show <task-code> to read it")
 			}
-			return runTaskAction(command.Context(), command.OutOrStdout(), opts.host, client, opts.credentials, action, strings.ToUpper(strings.TrimSpace(args[0])), revision)
+			requestKey, err := mutationKey(key)
+			if err != nil {
+				return err
+			}
+			code, err := taskCode(args[0])
+			if err != nil {
+				return err
+			}
+			return runTaskAction(command.Context(), command.OutOrStdout(), opts.host, client, opts.credentials, action, code, revision, requestKey)
 		},
 	}
-	command.Flags().Int64Var(&revision, "revision", 0, "Task revision for optimistic concurrency")
+	command.Flags().Int64Var(&revision, "revision", 0, "Current Task revision, as printed by assign task show (optimistic concurrency)")
+	command.Flags().StringVar(&key, "idempotency-key", "", "Retain a 16–200 character key for identical retries; generated when omitted")
 	return command
 }
 
-func runTaskAction(ctx context.Context, output io.Writer, rawHost string, client *http.Client, store credentialStore, action, code string, revision int64) error {
-	host, err := validatedHost(rawHost)
-	if err != nil {
-		return newExitError(ExitArguments, "%s", err)
-	}
-	token, err := authorizationToken(ctx, host, client, store)
-	if err != nil {
-		return err
-	}
-	key, err := newIdempotencyKey()
-	if err != nil {
-		return newExitError(ExitOperation, "create idempotency key")
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, host+"/api/v1/cli/tasks/"+url.PathEscape(code)+"/"+action, nil)
-	if err != nil {
-		return newExitError(ExitOperation, "prepare Task request")
-	}
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Authorization", "Bearer "+token)
-	request.Header.Set("If-Match", fmt.Sprintf("\"%d\"", revision))
-	request.Header.Set("Idempotency-Key", key)
-	response, err := client.Do(request)
-	if err != nil {
-		return newExitError(ExitOperation, "request Task action: %v", err)
-	}
-	defer response.Body.Close()
-	if response.StatusCode == http.StatusUnauthorized {
-		return newExitError(ExitAuthentication, "authentication was rejected; create or configure a current personal API token")
-	}
-	if response.StatusCode == http.StatusConflict {
-		return newExitError(ExitConflict, "Task changed; refresh its revision and retry")
-	}
-	if response.StatusCode != http.StatusOK {
-		return newExitError(ExitOperation, "Task action failed with HTTP %d", response.StatusCode)
-	}
+func runTaskAction(ctx context.Context, output io.Writer, rawHost string, client *http.Client, store credentialStore, action, code string, revision int64, key string) error {
 	var result struct {
 		Task struct {
 			Code  string `json:"code"`
 			Title string `json:"title"`
 		} `json:"task"`
 	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, 1024*1024)).Decode(&result); err != nil || result.Task.Code == "" || result.Task.Title == "" {
-		return newExitError(ExitOperation, "decode Task action response")
+	err := taskMutation(ctx, &options{host: rawHost, credentials: store}, client, "/api/v1/cli/tasks/"+url.PathEscape(code)+"/"+action, nil, key, revision, http.StatusOK, &result)
+	if err != nil {
+		if exitCode(err) == ExitConflict {
+			return newExitError(ExitConflict, "Task write conflict; run assign task show %s to reconcile current state before a new operation; identical retries retain the original revision and --idempotency-key %s", code, key)
+		}
+		return err
 	}
-	_, err = fmt.Fprintf(output, "%s  %s\n", result.Task.Code, result.Task.Title)
+	if result.Task.Code == "" || result.Task.Title == "" {
+		return newExitError(ExitOperation, "Task action response is incomplete; reconcile with --idempotency-key %s and identical arguments", key)
+	}
+	_, err = fmt.Fprintf(output, "%s  %s\n", safeInline(result.Task.Code), safeInline(result.Task.Title))
 	return err
 }
 

@@ -304,7 +304,7 @@ func runLogin(ctx context.Context, output, diagnostic io.Writer, rawHost string,
 	}
 	hash := sha256.Sum256([]byte(verifier))
 	challenge := base64.RawURLEncoding.EncodeToString(hash[:])
-	authorizationURL := host + "/api/v1/cli/oauth/authorize?" + url.Values{
+	authorizationURL := host + "/api/v1/dev/oauth/authorize?" + url.Values{
 		"response_type": {"code"}, "client_id": {cliOAuthClientID}, "redirect_uri": {redirectURI},
 		"state": {state}, "code_challenge": {challenge}, "code_challenge_method": {"S256"},
 	}.Encode()
@@ -366,7 +366,7 @@ func refreshCredential(ctx context.Context, client *http.Client, host string, cr
 }
 
 func requestTokens(ctx context.Context, client *http.Client, host string, values url.Values) (storedCredential, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, host+"/api/v1/cli/oauth/token", strings.NewReader(values.Encode()))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, host+"/api/v1/dev/oauth/token", strings.NewReader(values.Encode()))
 	if err != nil {
 		return storedCredential{}, newExitError(ExitOperation, "prepare token request")
 	}
@@ -421,7 +421,7 @@ func runLogout(ctx context.Context, diagnostic io.Writer, rawHost string, client
 	credential, loadErr := store.Load(host)
 	var remoteErr error
 	if loadErr == nil && credential.AccessToken != "" {
-		request, requestErr := http.NewRequestWithContext(ctx, http.MethodPost, host+"/api/v1/cli/oauth/revoke", nil)
+		request, requestErr := http.NewRequestWithContext(ctx, http.MethodPost, host+"/api/v1/dev/oauth/revoke", nil)
 		if requestErr != nil {
 			remoteErr = requestErr
 		} else {

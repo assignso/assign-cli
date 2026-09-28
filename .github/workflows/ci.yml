@@ -10,11 +10,35 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
           cache: true
-      - run: go build ./...
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: terminal/package-lock.json
+      - uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
+        with:
+          bun-version: 1.4.2
+      - run: go test ./...
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+      - working-directory: terminal
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm audit --audit-level=moderate
+          ./build-all.sh
+      - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --snapshot --clean --skip=publish
+      - name: Verify paired archives, size budget, and SBOMs
+        run: ./scripts/verify-release-archives.sh

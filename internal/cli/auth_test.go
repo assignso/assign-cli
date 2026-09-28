@@ -19,7 +19,7 @@ import (
 func TestRunLoginBindsLoopbackAndCompletesPKCEExchange(t *testing.T) {
 	var challenge, redirectURI string
 	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/api/v1/cli/oauth/token" {
+		if request.URL.Path != "/api/v1/dev/oauth/token" {
 			t.Fatalf("path = %s", request.URL.Path)
 		}
 		if err := request.ParseForm(); err != nil {
@@ -81,7 +81,7 @@ func TestRunLoginBindsLoopbackAndCompletesPKCEExchange(t *testing.T) {
 func TestAuthorizationTokenRefreshesAndRotatesStoredCredential(t *testing.T) {
 	t.Setenv("ASSIGN_TOKEN", "")
 	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/api/v1/cli/oauth/token" {
+		if request.URL.Path != "/api/v1/dev/oauth/token" {
 			t.Fatalf("path = %s", request.URL.Path)
 		}
 		if err := request.ParseForm(); err != nil {

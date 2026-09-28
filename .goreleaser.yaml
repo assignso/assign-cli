@@ -36,6 +36,11 @@ archives:
           - zip
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - src: terminal/build/{{ .Os }}_{{ .Arch }}/assign-discuss{{ if eq .Os "windows" }}.exe{{ end }}
+        strip_parent: true
+        info:
+          mode: 0755
 
 checksum:
   name_template: assign_{{ .Version }}_SHA256SUMS
@@ -43,6 +48,18 @@ checksum:
   extra_files:
     - glob: ./install.sh
     - glob: ./install.ps1
+
+sboms:
+  - id: archives
+    artifacts: archive
+    documents:
+      - "{{ .ArtifactName }}.sbom.json"
+    args:
+      - "${artifact}"
+      - "--output"
+      - "cyclonedx-json=${document}"
+      - "--enrich"
+      - "all"
 
 changelog:
   use: git
@@ -68,6 +85,7 @@ homebrew_casks:
       - assign
     binaries:
       - assign
+      - assign-discuss
     directory: Casks
     repository:
       owner: assignso
