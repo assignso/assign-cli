@@ -123,6 +123,7 @@ func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client 
 	root.AddCommand(newAliasesCommand())
 	root.AddCommand(withAliases(newTaskCommand(opts, client)))
 	root.AddCommand(newMilestoneCommand(opts, client))
+	root.AddCommand(newActivityCommand(opts, client))
 	root.AddCommand(withAliases(newWorkspaceCommand(opts, client)))
 	root.AddCommand(withAliases(newProjectCommand(opts, client)))
 	root.AddCommand(withAliases(newDocumentCommand(opts, client)))
