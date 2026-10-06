@@ -43,6 +43,7 @@ const actionResult: Renderer = (part, _message, index) => {
 const operationReceipts: Renderer = (part, _message, index, context) => {
   if (part.type !== "operation_receipts" || !Array.isArray(part.receipts)) return null;
   const labels: Record<string, string> = {
+    task_create: "Task created",
     evidence_collection_create: "Evidence collection saved", evidence_collection_exclude: "Investigation exclusions saved",
     task_result_set_create: "Task results saved", task_selection_create: "Task selection saved",
     document_patch_create: "Document draft saved", change_set_create: "Changes proposed", change_set_apply: "Change outcome recorded",
@@ -118,7 +119,15 @@ const toolActivities = (message: DiscussMessage): Widget | null => {
   </Text>)}</Frame> };
 };
 
-const renderers: readonly Renderer[] = [taskResult, actionResult, operationReceipts, interaction, evidence, entityReferences];
+const responseOutcome: Renderer = (part, _message, index) => {
+  if (part.type !== "response_outcome" || part.schema !== "assign.discuss.response_outcome.v1" || part.execution_state !== "partial") return null;
+  const committed = Array.isArray(part.completed_action_ids) && part.completed_action_ids.length > 0;
+  return {key: `outcome:${index}`, node: <Frame title={committed ? "Partially completed" : "Unfinished request"}>
+    <Text>{committed ? "Review recorded results before requesting the remaining work. Committed changes remain in effect." : "Review any recorded results before requesting the remaining work."}</Text>
+    {part.usage_state !== "settled" && part.usage_state !== "not_started" ? <Text>Check status before retrying; usage has not been confirmed.</Text> : null}
+  </Frame>};
+};
+const renderers: readonly Renderer[] = [taskResult, actionResult, operationReceipts, responseOutcome, interaction, evidence, entityReferences];
 const hiddenTypes = new Set(["runtime_text", "knowledge_answer", "entity_reference", "context_capsule", "tool_activity", "interaction_decision"]);
 
 export function messageWidgets(message: DiscussMessage, context: WidgetContext = { workspaceSlug: "" }): readonly Widget[] {

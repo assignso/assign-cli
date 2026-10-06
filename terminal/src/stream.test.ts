@@ -46,4 +46,16 @@ describe("terminal Discuss stream", () => {
     assert.equal(mergeDiscussMessage([message(2)], message(1))[0]?.revision, 2);
     assert.equal(mergeDiscussMessage([message(2)], message(3))[0]?.state, "final");
   });
+
+  it("keeps one canonical failed or cancelled answer when old streaming events arrive late", () => {
+    for (const state of ["failed", "cancelled"] as const) {
+      const terminal: DiscussMessage = { ...message(4), state, run_state: state };
+      const merged = mergeDiscussMessage([message(2)], terminal);
+      assert.equal(merged.length, 1);
+      assert.equal(merged[0]?.state, state);
+      const late = mergeDiscussMessage(merged, message(3, "Stale completed answer"));
+      assert.equal(late.length, 1);
+      assert.equal(late[0], terminal);
+    }
+  });
 });

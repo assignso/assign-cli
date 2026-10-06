@@ -33,4 +33,21 @@ describe("terminal Discuss widgets", () => {
   it("neutralizes terminal and bidirectional control characters", () => {
     assert.equal(safeTerminalText("safe\u001b]8;;https://evil.invalid\u0007link\u202E"), "safe�]8;;https://evil.invalid�link�");
   });
+
+  it("keeps a human wait and retires its decision controls after canonical invalidation", () => {
+    const waiting = message([{ type: "interaction", id: "q", revision: 2, state: "open",
+      interaction_type: "clarification", intent_id: "intent", intent_revision: 3, intent_state: "waiting" }]);
+    assert.equal(openInteraction([waiting]), waiting);
+    for (const state of ["stale", "expired", "resolved", "superseded"]) {
+      const closed = { ...waiting, revision: 4, parts: [{ ...waiting.parts[0], state }] };
+      assert.equal(openInteraction([closed]), undefined);
+    }
+  });
+});
+
+it("keeps the Core managed partial result and receipt visible", async () => {
+  const prepared = await import("../../../assign-core/internal/discuss/testdata/kr08_managed_partial_response.json");
+  const widgets = messageWidgets({...message(prepared.default.parts), state: "failed"}, { workspaceSlug: "assign", webOrigin: "https://app.assign.so" });
+  assert.ok(widgets.some(widget => widget.key.startsWith("outcome:")));
+  assert.ok(widgets.some(widget => widget.key.startsWith("receipts:")));
 });
