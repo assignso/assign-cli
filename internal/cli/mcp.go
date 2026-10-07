@@ -280,7 +280,7 @@ func runMCPStdio(ctx context.Context, input io.Reader, output, _ io.Writer, host
 }
 
 func (proxy *mcpProxy) forward(ctx context.Context, message []byte, envelope mcpEnvelope, output io.Writer) error {
-	if envelope.Method != "initialize" {
+	if envelope.Method != "initialize" && envelope.Method != "server/discover" && envelopeProtocol(envelope) != "2026-07-28" {
 		select {
 		case <-proxy.initialized:
 		case <-ctx.Done():
@@ -312,7 +312,7 @@ func (proxy *mcpProxy) forward(ctx context.Context, message []byte, envelope mcp
 	if status < 200 || status >= 300 {
 		return newExitError(ExitOperation, "MCP endpoint returned HTTP %d", status)
 	}
-	if envelope.Method == "initialize" {
+	if envelope.Method == "initialize" || envelope.Method == "server/discover" {
 		proxy.initializeOnce.Do(func() { close(proxy.initialized) })
 	}
 	return nil
@@ -326,6 +326,7 @@ func (proxy *mcpProxy) forwardOnce(ctx context.Context, token string, message []
 	request.Header.Set("Authorization", "Bearer "+token)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json, text/event-stream")
+	request.Header.Set("Mcp-Method", envelope.Method)
 	proxy.mu.Lock()
 	if proxy.session != "" {
 		request.Header.Set("Mcp-Session-Id", proxy.session)
@@ -334,6 +335,9 @@ func (proxy *mcpProxy) forwardOnce(ctx context.Context, token string, message []
 		request.Header.Set("MCP-Protocol-Version", proxy.protocol)
 	}
 	proxy.mu.Unlock()
+	if version := envelopeProtocol(envelope); version != "" {
+		request.Header.Set("MCP-Protocol-Version", version)
+	}
 	response, err := proxy.client.Do(request)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
@@ -551,4 +555,17 @@ func runExternalCommand(ctx context.Context, input io.Reader, output, diagnostic
 	command := exec.CommandContext(ctx, name, args...)
 	command.Stdin, command.Stdout, command.Stderr = input, output, diagnostic
 	return command.Run()
+}
+
+// MCP 2.0 carries negotiation per request. Forward the original body unchanged;
+// this transport neither owns event subscriptions nor schedules a native agent.
+func envelopeProtocol(envelope mcpEnvelope) string {
+	var p struct {
+		Meta map[string]any `json:"_meta"`
+	}
+	if json.Unmarshal(envelope.Params, &p) != nil {
+		return ""
+	}
+	version, _ := p.Meta["io.modelcontextprotocol/protocolVersion"].(string)
+	return version
 }

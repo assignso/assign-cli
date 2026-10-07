@@ -180,3 +180,39 @@ func TestMCPSetupReportsMissingCodex(t *testing.T) {
 		t.Fatalf("error=%v", err)
 	}
 }
+
+func TestMCPStdioForwardsEventsWithoutLegacyInitialization(t *testing.T) {
+	store := &memoryCredentialStore{value: storedCredential{AccessToken: "prepared-cli", RefreshToken: "prepared-refresh", ExpiresAt: time.Now().Add(time.Hour)}}
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+		_, _ = io.WriteString(w, `{"access_token":"prepared-mcp","token_type":"Bearer","scopes":["assign:read"],"expires_in":900,"workspace_id":"11111111-1111-1111-1111-111111111111"}`)
+	}))
+	defer api.Close()
+	var calls atomic.Int32
+	mcpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var envelope mcpEnvelope
+		raw, _ := io.ReadAll(r.Body)
+		if e := json.Unmarshal(raw, &envelope); e != nil {
+			t.Error(e)
+		}
+		if r.Header.Get("Mcp-Method") != envelope.Method || r.Header.Get("MCP-Protocol-Version") != "2026-07-28" {
+			t.Error("missing MCP 2.0 request headers")
+		}
+		if !bytes.Contains(raw, []byte(`"assign/taskExecutionToken":"prepared-token"`)) {
+			t.Error("request metadata changed")
+		}
+		calls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"jsonrpc":"2.0","id":1,"result":{}}`)
+	}))
+	defer mcpServer.Close()
+	input := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"events/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","assign/taskExecutionToken":"prepared-token"}}}` + "\n")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if e := runMCPStdio(ctx, input, io.Discard, io.Discard, api.URL, mcpServer.URL, api.Client(), store, []string{"assign:read"}); e != nil {
+		t.Fatal(e)
+	}
+	if calls.Load() != 1 {
+		t.Fatal(calls.Load())
+	}
+}
