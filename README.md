@@ -101,6 +101,33 @@ cursors. Task, source, and saved-work widgets print exact Assign Web URLs when
 the server provides a trusted identity and version; opening them rechecks your
 current Workspace access.
 
+## Initialization and configuration (Upcoming)
+
+After signing in, select a Project for your current Workspace:
+
+```sh
+assign init PRO
+assign task related PRO-123 --compact
+```
+
+`init` validates the Project and saves the same local selection as `project switch`.
+The selection belongs to the current API host and Workspace. `task related` is an
+alias for `task context`: it returns the bounded Task packet, including readable
+related Tasks, and reports truncation or omissions on stderr.
+
+Inspect or save an API host for future commands:
+
+```sh
+assign config show
+assign config set host https://api.assign.so
+assign config unset host
+```
+
+An explicit `--host` overrides the saved setting for one command. The default is
+`https://api.assign.so`. Settings contain only the HTTPS host; credentials stay in
+their existing credential store. `ASSIGN_CONFIG_FILE` overrides the settings-file
+location. These commands are implemented locally and await a CLI release.
+
 ## Built for the shell
 
 The CLI keeps data on stdout and diagnostics on stderr, so normal shell tools

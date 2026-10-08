@@ -29,6 +29,8 @@ var (
 
 type options struct {
 	host        string
+	hostSource  string
+	settings    cliSettingsStore
 	credentials credentialStore
 	contexts    projectContextStore
 	openURL     func(string) error
@@ -79,7 +81,7 @@ func newRootCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 }
 
 func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client *http.Client) *cobra.Command {
-	opts := &options{credentials: defaultCredentialStore(), contexts: defaultProjectContextStore(), openURL: openBrowser, runDiscuss: runDiscussSidecar, isTerminal: isInteractiveTerminal}
+	opts := &options{credentials: defaultCredentialStore(), contexts: defaultProjectContextStore(), settings: defaultCLISettingsStore(), openURL: openBrowser, runDiscuss: runDiscussSidecar, isTerminal: isInteractiveTerminal}
 	if client == nil {
 		client = http.DefaultClient
 	}
@@ -93,11 +95,8 @@ func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client 
 		RunE: func(command *cobra.Command, _ []string) error {
 			return runMyWork(command.Context(), command.OutOrStdout(), opts.host, client, opts.credentials)
 		},
-		PersistentPreRunE: func(*cobra.Command, []string) error {
-			if _, err := validatedHost(opts.host); err != nil {
-				return newExitError(ExitArguments, "%s", err)
-			}
-			return nil
+		PersistentPreRunE: func(command *cobra.Command, _ []string) error {
+			return resolveConfiguredHost(command, opts)
 		},
 	}
 	root.SetIn(stdin)
@@ -115,6 +114,8 @@ func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client 
 	root.AddCommand(newUpdateCommand(releaseHTTPClient()))
 	root.AddCommand(withAliases(newCompletionCommand(root)))
 	root.AddCommand(withAliases(newDoctorCommand(opts)))
+	root.AddCommand(newConfigCommand(opts))
+	root.AddCommand(newInitCommand(opts, client))
 	root.AddCommand(withAliases(newLoginCommand(opts, client)))
 	root.AddCommand(withAliases(newLogoutCommand(opts, client)))
 	root.AddCommand(newMCPCommand(opts, client, runExternalCommand))

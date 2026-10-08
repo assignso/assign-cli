@@ -148,7 +148,7 @@ func taskMutation(ctx context.Context, opts *options, client *http.Client, path 
 func newTaskContextCommand(opts *options, client *http.Client) *cobra.Command {
 	var compact, full bool
 	var milestoneScope string
-	command := &cobra.Command{Use: "context <task-code>", Short: "Print bounded, untrusted Task context as Markdown", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
+	command := &cobra.Command{Use: "context <task-code>", Aliases: []string{"related"}, Short: "Print bounded, untrusted Task context and related Tasks as Markdown", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
 		code, err := taskCode(args[0])
 		if err != nil {
 			return err
