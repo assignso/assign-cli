@@ -220,6 +220,11 @@ Task pages accept an opaque `--cursor`, `--limit` (1–100) and scalar `--field 
 and continuation under `assign.cli.task-page.v1`. Context defaults to 16 KiB;
 `--full` uses 64 KiB. Read stderr for omitted or truncated context.
 
+`done` lets the server pick the completing Status. When a Project has several
+Statuses that count as completed, the server answers `completion_target_required`
+and the CLI exits 5 naming that rule; complete the Task in the web app or MCP
+with an explicit `target_status_id`. A stale revision is reported separately.
+
 Create/comment/start/done/reopen accept `--idempotency-key` for an identical retry.
 Keep the original arguments and revision when reconciling an uncertain write;
 a newly decided operation needs a new key. Descriptions/comments accept `-` for

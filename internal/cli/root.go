@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -258,9 +259,11 @@ func runTaskShow(ctx context.Context, output io.Writer, opts *options, client *h
 	return err
 }
 
+var statusUUIDPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
 func newTaskActionCommand(action, description string, opts *options, client *http.Client) *cobra.Command {
 	var revision int64
-	var key string
+	var key, targetStatusID string
 	command := &cobra.Command{
 		Use:   action + " <task-code>",
 		Short: description,
@@ -277,8 +280,18 @@ func newTaskActionCommand(action, description string, opts *options, client *htt
 			if err != nil {
 				return err
 			}
-			return runTaskAction(command.Context(), command.OutOrStdout(), opts.host, client, opts.credentials, action, code, revision, requestKey)
+			query := ""
+			if targetStatusID != "" {
+				if !statusUUIDPattern.MatchString(targetStatusID) {
+					return newExitError(ExitArguments, "--target-status-id must be a Status UUID")
+				}
+				query = "?target_status_id=" + url.QueryEscape(targetStatusID)
+			}
+			return runTaskAction(command.Context(), command.OutOrStdout(), opts.host, client, opts.credentials, action+query, code, revision, requestKey)
 		},
+	}
+	if action == "done" {
+		command.Flags().StringVar(&targetStatusID, "target-status-id", "", "Completing Status UUID; required when several Statuses count as completed")
 	}
 	command.Flags().Int64Var(&revision, "revision", 0, "Current Task revision, as printed by assign task show (optimistic concurrency)")
 	command.Flags().StringVar(&key, "idempotency-key", "", "Retain a 16–200 character key for identical retries; generated when omitted")
@@ -294,7 +307,8 @@ func runTaskAction(ctx context.Context, output io.Writer, rawHost string, client
 	}
 	err := taskMutation(ctx, &options{host: rawHost, credentials: store}, client, "/api/v1/cli/tasks/"+url.PathEscape(code)+"/"+action, nil, key, revision, http.StatusOK, &result)
 	if err != nil {
-		if exitCode(err) == ExitConflict {
+		var lifecycle lifecycleConflictError
+		if exitCode(err) == ExitConflict && !errors.As(err, &lifecycle) {
 			return newExitError(ExitConflict, "Task write conflict; run assign task show %s to reconcile current state before a new operation; identical retries retain the original revision and --idempotency-key %s", code, key)
 		}
 		return err
