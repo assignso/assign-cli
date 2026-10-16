@@ -101,6 +101,33 @@ cursors. Task, source, and saved-work widgets print exact Assign Web URLs when
 the server provides a trusted identity and version; opening them rechecks your
 current Workspace access.
 
+## Initialization and configuration (Upcoming)
+
+After signing in, select a Project for your current Workspace:
+
+```sh
+assign init PRO
+assign task related PRO-123 --compact
+```
+
+`init` validates the Project and saves the same local selection as `project switch`.
+The selection belongs to the current API host and Workspace. `task related` is an
+alias for `task context`: it returns the bounded Task packet, including readable
+related Tasks, and reports truncation or omissions on stderr.
+
+Inspect or save an API host for future commands:
+
+```sh
+assign config show
+assign config set host https://api.assign.so
+assign config unset host
+```
+
+An explicit `--host` overrides the saved setting for one command. The default is
+`https://api.assign.so`. Settings contain only the HTTPS host; credentials stay in
+their existing credential store. `ASSIGN_CONFIG_FILE` overrides the settings-file
+location. These commands are implemented locally and await a CLI release.
+
 ## Built for the shell
 
 The CLI keeps data on stdout and diagnostics on stderr, so normal shell tools
@@ -192,6 +219,11 @@ Task pages accept an opaque `--cursor`, `--limit` (1–100) and scalar `--field 
 `next_cursor` or `has_more`. The command-specific JSON format includes both Tasks
 and continuation under `assign.cli.task-page.v1`. Context defaults to 16 KiB;
 `--full` uses 64 KiB. Read stderr for omitted or truncated context.
+
+`done` lets the server pick the completing Status. When a Project has several
+Statuses that count as completed, the server answers `completion_target_required`
+and the CLI exits 5 naming that rule; complete the Task in the web app or MCP
+with an explicit `target_status_id`. A stale revision is reported separately.
 
 Create/comment/start/done/reopen accept `--idempotency-key` for an identical retry.
 Keep the original arguments and revision when reconciling an uncertain write;

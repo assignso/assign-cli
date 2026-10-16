@@ -375,3 +375,56 @@ func TestTaskActionWithoutRevisionPointsToTaskShow(t *testing.T) {
 		t.Fatalf("exit=%d stderr=%q", code, stderr)
 	}
 }
+
+func TestTaskDoneSurfacesLifecycleConflictsAndKeepsRevisionConflicts(t *testing.T) {
+	for name, tc := range map[string]struct {
+		body string
+		want string
+		not  string
+	}{
+		"ambiguous completion": {`{"error":{"code":"completion_target_required","message":"choose"},"choices":[{"status_id":"x","name":"Done"}]}`, "explicit destination Status", "reconcile current state"},
+		"pending migration":    {`{"error":{"code":"lifecycle_migration_pending","message":"pending"}}`, "migration is still applying", "run assign task show"},
+		"stale revision":       {`{"error":{"code":"revision_conflict","message":"stale"}}`, "run assign task show PRO-9", ""},
+		"legacy empty body":    {``, "run assign task show PRO-9", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				response.Header().Set("Content-Type", "application/json")
+				response.WriteHeader(http.StatusConflict)
+				_, _ = response.Write([]byte(tc.body))
+			}))
+			defer server.Close()
+			t.Setenv("ASSIGN_TOKEN", "apt_test")
+			var stdout, stderr bytes.Buffer
+			command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
+			command.SetArgs([]string{"--host", server.URL, "done", "PRO-9", "--revision", "7"})
+			err := command.ExecuteContext(context.Background())
+			if exitCode(err) != ExitConflict || err == nil || !strings.Contains(err.Error(), tc.want) || (tc.not != "" && strings.Contains(err.Error(), tc.not)) {
+				t.Fatalf("code=%d err=%v", exitCode(err), err)
+			}
+		})
+	}
+}
+
+func TestTaskDoneSendsExplicitTargetStatus(t *testing.T) {
+	var query string
+	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		query = request.URL.RawQuery
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"task":{"code":"PRO-9","title":"Ship"},"reassigned":false}`))
+	}))
+	defer server.Close()
+	t.Setenv("ASSIGN_TOKEN", "apt_test")
+	const target = "0196a000-0000-7000-8000-000000000001"
+	var stdout, stderr bytes.Buffer
+	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
+	command.SetArgs([]string{"--host", server.URL, "done", "pro-9", "--revision", "3", "--target-status-id", target})
+	if err := command.ExecuteContext(context.Background()); err != nil || query != "target_status_id="+target {
+		t.Fatalf("err=%v query=%q", err, query)
+	}
+	command = newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
+	command.SetArgs([]string{"--host", server.URL, "done", "pro-9", "--revision", "3", "--target-status-id", "Done"})
+	if err := command.ExecuteContext(context.Background()); exitCode(err) != ExitArguments {
+		t.Fatalf("invalid target err = %v", err)
+	}
+}

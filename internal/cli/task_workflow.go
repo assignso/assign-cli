@@ -127,6 +127,9 @@ func taskMutation(ctx context.Context, opts *options, client *http.Client, path 
 	case http.StatusNotFound:
 		return newExitError(ExitContext, "the requested Project or Task was not found")
 	case http.StatusConflict:
+		if err := lifecycleConflict(response.Body); err != nil {
+			return err
+		}
 		return newExitError(ExitConflict, "Task write conflict; reconcile current state before a new operation; --idempotency-key %s is retained only for an identical retry", key)
 	}
 	if response.StatusCode >= 500 {
@@ -148,7 +151,7 @@ func taskMutation(ctx context.Context, opts *options, client *http.Client, path 
 func newTaskContextCommand(opts *options, client *http.Client) *cobra.Command {
 	var compact, full bool
 	var milestoneScope string
-	command := &cobra.Command{Use: "context <task-code>", Short: "Print bounded, untrusted Task context as Markdown", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
+	command := &cobra.Command{Use: "context <task-code>", Aliases: []string{"related"}, Short: "Print bounded, untrusted Task context and related Tasks as Markdown", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
 		code, err := taskCode(args[0])
 		if err != nil {
 			return err
@@ -502,4 +505,38 @@ func runProjectTaskPage(ctx context.Context, output, diagnostics io.Writer, opts
 		_, _ = fmt.Fprintf(diagnostics, "assign: more Tasks are available; continue with --cursor %s\n", *page.NextCursor)
 	}
 	return nil
+}
+
+// lifecycleConflictError marks a 409 whose body names a lifecycle rule rather
+// than a stale Task revision, so callers keep the server's explanation.
+type lifecycleConflictError struct{ *exitError }
+
+func (e lifecycleConflictError) Unwrap() error { return e.exitError }
+
+// lifecycleConflict decodes a bounded 409 body. Unknown or unreadable bodies
+// return nil and keep the generic revision-conflict handling, which also covers
+// servers that predate lifecycle error codes.
+func lifecycleConflict(body io.Reader) error {
+	var payload struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if json.NewDecoder(io.LimitReader(body, 64*1024)).Decode(&payload) != nil {
+		return nil
+	}
+	var message string
+	switch payload.Error.Code {
+	case "completion_target_required":
+		message = "several Statuses count as completed for this Task; completion needs an explicit destination Status, which this command cannot choose; complete it in the web app or MCP with a target_status_id"
+	case "workflow_status_unavailable":
+		message = "the Project has no Status for this action; ask a Workspace administrator to review the Project lifecycle"
+	case "lifecycle_migration_pending":
+		message = "a lifecycle migration is still applying; retry once it completes"
+	case "task_inactive":
+		message = "the Task is archived or otherwise inactive and cannot change Status"
+	default:
+		return nil
+	}
+	return lifecycleConflictError{newExitError(ExitConflict, "%s (%s)", message, payload.Error.Code).(*exitError)}
 }
