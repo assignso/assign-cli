@@ -370,11 +370,8 @@ func runSearch(ctx context.Context, output io.Writer, rawHost string, client *ht
 		return newExitError(ExitOperation, "request search: %v", err)
 	}
 	defer response.Body.Close()
-	if response.StatusCode == http.StatusUnauthorized {
-		return newExitError(ExitAuthentication, "authentication was rejected; create or configure a current personal API token")
-	}
 	if response.StatusCode != http.StatusOK {
-		return newExitError(ExitOperation, "search request failed with HTTP %d", response.StatusCode)
+		return productReadError(response, "search")
 	}
 	var page cliSearchResponse
 	decoder := json.NewDecoder(io.LimitReader(response.Body, 2*1024*1024))
@@ -425,11 +422,8 @@ func runMyWork(ctx context.Context, output io.Writer, rawHost string, client *ht
 		return newExitError(ExitOperation, "request My Work: %v", err)
 	}
 	defer response.Body.Close()
-	if response.StatusCode == http.StatusUnauthorized {
-		return newExitError(ExitAuthentication, "authentication was rejected; create or configure a current personal API token")
-	}
 	if response.StatusCode != http.StatusOK {
-		return newExitError(ExitOperation, "My Work request failed with HTTP %d", response.StatusCode)
+		return productReadError(response, "My Work")
 	}
 	var page cliMyWorkResponse
 	decoder := json.NewDecoder(io.LimitReader(response.Body, 2*1024*1024))
