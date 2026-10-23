@@ -276,3 +276,85 @@ func TestExternalOperationWaitStopsAnInflightReadOnCallerCancellation(t *testing
 		t.Fatalf("err=%v explicit attempts=%d", err, requests)
 	}
 }
+
+// Source-authored only: these independent canonical response fixtures remain
+// phase-deferred with the existing transport harness. No provider is involved.
+func TestOperationRecoverySupportsEveryIntegratedSourceWithoutFetchingResults(t *testing.T) {
+	t.Setenv("ASSIGN_TOKEN", "prepared-terminal-token")
+	for _, source := range []struct{ name, reader, path string }{
+		{"agent", "listWorkspaceAgentRunOutputs", "/api/v1/workspaces/" + operationFixtureWorkspace + "/agents/" + operationFixtureAgent + "/runs/" + operationFixtureID + "/outputs"},
+		{"lifecycle", "getLifecycleMigration", "/api/v1/workspaces/" + operationFixtureWorkspace + "/lifecycle-migrations/" + operationFixtureID},
+		{"knowledge", "getWorkspaceKnowledgeAnswer", "/api/v1/workspaces/" + operationFixtureWorkspace + "/knowledge/answers/" + operationFixtureID},
+		// A repository command is not its result sync run. This distinct source UUID
+		// prevents imposing the Agent run identity relation on every source family.
+		{"repository", "getKnowledgeRepositorySyncRun", "/api/v1/workspaces/" + operationFixtureWorkspace + "/knowledge-repository/runs/" + operationFixtureAgent},
+	} {
+		for _, action := range []string{"show", "cancel", "wait"} {
+			t.Run(source.name+"/"+action, func(t *testing.T) {
+				var value map[string]any
+				if err := json.Unmarshal([]byte(operationFixture("succeeded")), &value); err != nil {
+					t.Fatal(err)
+				}
+				value["result"] = map[string]any{"kind": "authorized-resource", "operation_id": source.reader, "href": source.path, "media_type": "application/json"}
+				body, err := json.Marshal(value)
+				if err != nil {
+					t.Fatal(err)
+				}
+				calls := 0
+				server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					calls++
+					method := http.MethodGet
+					if action == "cancel" {
+						method = http.MethodPost
+					}
+					if r.Method != method || r.URL.Path != "/api/v1/operations/"+operationFixtureID || r.URL.RawQuery != "" {
+						t.Errorf("unexpected dispatch: %s %s", r.Method, r.URL)
+					}
+					if action == "cancel" && r.Header.Get("Idempotency-Key") != "prepared-operation-cancel-01" {
+						t.Error("original cancellation key was lost")
+					}
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write(body)
+				}))
+				defer server.Close()
+				args := []string{"operation", action, operationFixtureID}
+				if action == "cancel" {
+					args = append(args, "--idempotency-key", "prepared-operation-cancel-01")
+				}
+				out, _, err := executeTaskFixture(t, server, "", args...)
+				if err != nil || calls != 1 || !strings.Contains(out, source.reader) || !strings.Contains(out, source.path) {
+					t.Fatalf("out=%q err=%v calls=%d", out, err, calls)
+				}
+			})
+		}
+	}
+}
+
+func TestOperationSourceReferencesRefuseUnsafeOrCrossBoundResults(t *testing.T) {
+	prefix := "/api/v1/workspaces/" + operationFixtureWorkspace
+	for _, ref := range []cliOperationResult{
+		{"authorized-resource", "getLifecycleMigration", prefix + "/lifecycle-migrations/" + operationFixtureAgent, "application/json"},
+		{"authorized-resource", "getWorkspaceKnowledgeAnswer", prefix + "/knowledge/answers/" + operationFixtureAgent, "application/json"},
+		{"authorized-resource", "getKnowledgeRepositorySyncRun", prefix + "/knowledge-repository/runs/00000000-0000-0000-0000-000000000000", "application/json"},
+		{"authorized-resource", "getWorkspaceKnowledgeAnswer", prefix + "/lifecycle-migrations/" + operationFixtureID, "application/json"},
+		{"authorized-resource", "getKnowledgeRepositorySyncRun", "https://other.invalid" + prefix + "/knowledge-repository/runs/" + operationFixtureAgent, "application/json"},
+		{"authorized-resource", "getKnowledgeRepositorySyncRun", prefix + "/knowledge-repository/runs/" + operationFixtureAgent + "?token=unsafe", "application/json"},
+		{"authorized-resource", "getWorkspaceKnowledgeAnswer", prefix + "/knowledge/answers/%31" + operationFixtureID[1:], "application/json"},
+		{"authorized-resource", "getLifecycleMigration", prefix + "/lifecycle-migrations/../" + operationFixtureID, "application/json"},
+		{"authorized-resource", "getLifecycleMigration", prefix + "/lifecycle-migrations/" + operationFixtureID + "#result", "application/json"},
+		{"authorized-resource", "getWorkspaceKnowledgeAnswer", prefix + "/knowledge/answers/" + operationFixtureID, "text/html"},
+	} {
+		var value map[string]any
+		if err := json.Unmarshal([]byte(operationFixture("succeeded")), &value); err != nil {
+			t.Fatal(err)
+		}
+		value["result"] = ref
+		body, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := decodeOperation(body, operationFixtureID); err == nil {
+			t.Errorf("accepted unsafe result: %s %s", ref.OperationID, ref.Href)
+		}
+	}
+}

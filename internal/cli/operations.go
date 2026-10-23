@@ -435,19 +435,34 @@ func unambiguousOperationJSON(decoder *json.Decoder, depth int) error {
 }
 
 func validOperationResult(result cliOperationResult, id string) bool {
-	// Only the currently integrated canonical source is supported. New source
-	// families add their exact operation/path binding here, never arbitrary URLs.
-	parts := strings.Split(result.Href, "/")
-	if result.Kind != "authorized-resource" || result.OperationID != "listWorkspaceAgentRunOutputs" || result.MediaType != "application/json" || len(parts) != 10 || parts[0] != "" || parts[1] != "api" || parts[2] != "v1" || parts[3] != "workspaces" || parts[5] != "agents" || parts[7] != "runs" || parts[8] != id || parts[9] != "outputs" {
+	reader, ok := operationResultReaders[result.OperationID]
+	if !ok || result.Kind != "authorized-resource" || result.MediaType != reader.MediaType {
 		return false
 	}
-	// Only the source owner's canonical output collection is a result reader.
-	workspace, err := operationID(parts[4])
-	if err != nil || workspace != parts[4] {
+	// Compare literal segments rather than normalizing an untrusted URL. This
+	// rejects origins, escaping, query/fragment, traversal and alternative routes.
+	parts, pattern := strings.Split(result.Href, "/"), strings.Split(reader.Path, "/")
+	if len(parts) != len(pattern) {
 		return false
 	}
-	agent, err := operationID(parts[6])
-	return err == nil && agent == parts[6]
+	for index, expected := range pattern {
+		if !strings.HasPrefix(expected, "{") || !strings.HasSuffix(expected, "}") {
+			if parts[index] != expected {
+				return false
+			}
+			continue
+		}
+		value, err := operationID(parts[index])
+		if err != nil || value != parts[index] {
+			return false
+		}
+		if expected == "{"+reader.IdentityParameter+"}" && value != id {
+			return false
+		}
+	}
+	// A repository command's successful result is its separately identified
+	// sync run. No reference grants authority or triggers an automatic GET.
+	return true
 }
 
 func printOperation(writer io.Writer, result cliOperation) error {
