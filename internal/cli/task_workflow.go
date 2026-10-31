@@ -150,7 +150,7 @@ func taskMutation(ctx context.Context, opts *options, client *http.Client, path 
 
 func newTaskContextCommand(opts *options, client *http.Client) *cobra.Command {
 	var compact, full bool
-	var milestoneScope string
+	var milestoneScope, workspaceID string
 	command := &cobra.Command{Use: "context <task-code>", Aliases: []string{"related"}, Short: "Print bounded, untrusted Task context and related Tasks as Markdown", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
 		code, err := taskCode(args[0])
 		if err != nil {
@@ -160,28 +160,43 @@ func newTaskContextCommand(opts *options, client *http.Client) *cobra.Command {
 		if full {
 			profile, cap = "full", 64*1024
 		}
+		ctx, cancel := context.WithTimeout(command.Context(), operationDeadline)
+		defer cancel()
+		transport, workspace, item, err := readResourceTask(ctx, opts, client, code, workspaceID)
+		if err != nil {
+			return err
+		}
+		defer transport.client.CloseIdleConnections()
 		var fence *milestoneContextFence
 		if command.Flags().Changed("milestone") {
-			fence, err = readMilestoneContextFence(command.Context(), opts, client, code, milestoneScope)
+			fence, err = readResourceMilestoneContextFence(ctx, transport, workspace.ID, code, milestoneScope)
 			if err != nil {
 				return err
 			}
+			if fence.task.ID != item.ID {
+				return newExitError(ExitOperation, "Task identity changed while acquiring Milestone scope")
+			}
 		}
 		var packet struct {
+			Format    string   `json:"format"`
 			TaskCode  string   `json:"task_code"`
 			Profile   string   `json:"profile"`
 			Markdown  string   `json:"markdown"`
 			Truncated *bool    `json:"truncated"`
 			Omissions []string `json:"omissions"`
 		}
-		if err := authorizedJSON(command.Context(), opts, client, http.MethodGet, "/api/v1/cli/tasks/"+url.PathEscape(code)+"/context?profile="+profile, nil, &packet); err != nil {
+		data, _, err := taskResourceExchange(ctx, transport, http.MethodGet, "/api/v1/tasks/"+item.ID+"/context?format=markdown&profile="+profile, "", "", http.StatusOK)
+		if err != nil {
 			return err
 		}
-		if packet.TaskCode != code || packet.Profile != profile || packet.Markdown == "" || packet.Truncated == nil || len(packet.Markdown) > cap {
+		if json.Unmarshal(data, &packet) != nil {
+			return newExitError(ExitOperation, "Task context representation is invalid")
+		}
+		if packet.Format != "markdown" || packet.TaskCode != code || packet.Profile != profile || packet.Markdown == "" || packet.Truncated == nil || len(packet.Markdown) > cap {
 			return newExitError(ExitOperation, "Task context response is incomplete or exceeds its profile limit")
 		}
 		if fence != nil {
-			current, err := readMilestoneContextFence(command.Context(), opts, client, code, milestoneScope)
+			current, err := readResourceMilestoneContextFence(ctx, transport, workspace.ID, code, milestoneScope)
 			if err != nil {
 				return err
 			}
@@ -202,6 +217,7 @@ func newTaskContextCommand(opts *options, client *http.Client) *cobra.Command {
 		_, err = io.WriteString(command.OutOrStdout(), safeBlock(packet.Markdown))
 		return err
 	}}
+	command.Flags().StringVar(&workspaceID, "workspace-id", "", "Credential Workspace UUID for personal/service tokens")
 	command.Flags().BoolVar(&compact, "compact", false, "Use the compact 16 KiB profile (default)")
 	command.Flags().BoolVar(&full, "full", false, "Use the full 64 KiB profile")
 	command.Flags().StringVar(&milestoneScope, "milestone", "", "Require observed membership in a Milestone code before and after the context read")
@@ -210,7 +226,7 @@ func newTaskContextCommand(opts *options, client *http.Client) *cobra.Command {
 }
 
 func newTaskCommentCommand(opts *options, client *http.Client) *cobra.Command {
-	var key string
+	var key, workspaceID, taskID string
 	command := &cobra.Command{Use: "comment <task-code> <message|->", Short: "Add an explicit Task comment; - reads bounded UTF-8 stdin", Args: exactArgs(2), RunE: func(command *cobra.Command, args []string) error {
 		code, err := taskCode(args[0])
 		if err != nil {
@@ -224,77 +240,20 @@ func newTaskCommentCommand(opts *options, client *http.Client) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		var result struct {
-			Revision int64 `json:"revision"`
+		if taskID != "" && key == "" {
+			return newExitError(ExitArguments, "recovery requires the original --idempotency-key")
 		}
-		if err := taskMutation(command.Context(), opts, client, "/api/v1/cli/tasks/"+url.PathEscape(code)+"/comments", struct {
-			Markdown string `json:"markdown"`
-		}{text}, requestKey, 0, http.StatusCreated, &result); err != nil {
+		ctx, cancel := context.WithTimeout(command.Context(), operationDeadline)
+		defer cancel()
+		if err := createResourceComment(ctx, command.ErrOrStderr(), opts, client, code, text, requestKey, workspaceID, taskID); err != nil {
 			return err
-		}
-		if result.Revision < 1 {
-			return newExitError(ExitOperation, "Comment response is incomplete; reconcile with --idempotency-key %s and identical arguments", requestKey)
 		}
 		_, err = fmt.Fprintln(command.OutOrStdout(), code)
 		return err
 	}}
 	command.Flags().StringVar(&key, "idempotency-key", "", "Retain a 16–200 character key for identical retries; generated when omitted")
-	return command
-}
-
-func newTaskCreateCommand(opts *options, client *http.Client) *cobra.Command {
-	var project, description, priority, key, field string
-	command := &cobra.Command{Use: "create <title>", Short: "Create a Task using canonical Workspace defaults", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
-		title := args[0]
-		if !utf8.ValidString(title) || strings.TrimSpace(title) == "" || utf8.RuneCountInString(title) > 500 || safeInline(title) != title {
-			return newExitError(ExitArguments, "title must contain 1–500 characters without control characters")
-		}
-		if priority != "" && priority != "none" && priority != "low" && priority != "medium" && priority != "high" && priority != "urgent" {
-			return newExitError(ExitArguments, "priority must be none, low, medium, high, or urgent")
-		}
-		if field != "" && field != "code" {
-			return newExitError(ExitArguments, "--field must be code")
-		}
-		text := ""
-		if command.Flags().Changed("description") {
-			var err error
-			text, err = taskText(description, command.InOrStdin())
-			if err != nil {
-				return err
-			}
-		}
-		requestKey, err := mutationKey(key)
-		if err != nil {
-			return err
-		}
-		code, err := resolveProjectCode(command.Context(), opts, client, project)
-		if err != nil {
-			return err
-		}
-		var result cliTask
-		body := struct {
-			Title       string `json:"title"`
-			Description string `json:"description_markdown,omitempty"`
-			Priority    string `json:"priority,omitempty"`
-		}{title, text, priority}
-		if err := taskMutation(command.Context(), opts, client, "/api/v1/cli/projects/"+url.PathEscape(code)+"/tasks", body, requestKey, 0, http.StatusCreated, &result); err != nil {
-			return err
-		}
-		if result.Code == "" || result.Title == "" {
-			return newExitError(ExitOperation, "Task response is incomplete; reconcile with --idempotency-key %s and identical arguments", requestKey)
-		}
-		if field == "code" {
-			_, err = fmt.Fprintln(command.OutOrStdout(), safeInline(result.Code))
-		} else {
-			_, err = fmt.Fprintf(command.OutOrStdout(), "%s  %s\n", safeInline(result.Code), safeInline(result.Title))
-		}
-		return err
-	}}
-	command.Flags().StringVar(&project, "project", "", "Project code; defaults to the selected Project")
-	command.Flags().StringVar(&description, "description", "", "Description Markdown, or - for bounded UTF-8 stdin")
-	command.Flags().StringVar(&priority, "priority", "", "Priority; omitted uses the Workspace creation default")
-	command.Flags().StringVar(&key, "idempotency-key", "", "Retain a 16–200 character key for identical retries; generated when omitted")
-	command.Flags().StringVar(&field, "field", "", "Print only code")
+	command.Flags().StringVar(&workspaceID, "workspace-id", "", "Credential Workspace UUID and original recovery target")
+	command.Flags().StringVar(&taskID, "task-id", "", "Original Task UUID printed before an uncertain comment")
 	return command
 }
 
@@ -341,15 +300,16 @@ func newProjectTaskListCommand(opts *options, client *http.Client) *cobra.Comman
 }
 
 type commentPageOptions struct {
-	cursor string
-	limit  int
+	workspaceID string
+	cursor      string
+	limit       int
 }
 
 func (p commentPageOptions) validate() error {
 	if p.limit < 1 || p.limit > 100 {
 		return newExitError(ExitArguments, "--limit must be between 1 and 100")
 	}
-	if len(p.cursor) > 2048 || safeInline(p.cursor) != p.cursor {
+	if len(p.cursor) > 4096 || safeInline(p.cursor) != p.cursor {
 		return newExitError(ExitArguments, "cursor is invalid or too long")
 	}
 	return nil
@@ -370,6 +330,7 @@ func newTaskCommentsCommand(opts *options, client *http.Client) *cobra.Command {
 	}}
 	command.Flags().IntVar(&page.limit, "limit", 50, "Comments per page (1–100)")
 	command.Flags().StringVar(&page.cursor, "cursor", "", "Opaque continuation cursor from the same Task")
+	command.Flags().StringVar(&page.workspaceID, "workspace-id", "", "Credential Workspace UUID for personal/service tokens")
 	return command
 }
 
@@ -386,13 +347,36 @@ func runTaskCommentsPage(ctx context.Context, output, diagnostics io.Writer, opt
 	if options.cursor != "" {
 		query.Set("cursor", options.cursor)
 	}
-	var page struct {
-		Items      []cliComment `json:"items"`
-		NextCursor *string      `json:"next_cursor"`
-		HasMore    *bool        `json:"has_more"`
-	}
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/tasks/"+url.PathEscape(code)+"/comments?"+query.Encode(), nil, &page); err != nil {
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
+	transport, workspace, item, err := readResourceTask(ctx, opts, client, code, options.workspaceID)
+	if err != nil {
 		return err
+	}
+	defer transport.client.CloseIdleConnections()
+	data, headers, err := taskResourceExchange(ctx, transport, http.MethodGet, "/api/v1/tasks/"+item.ID+"/comments?"+query.Encode(), "", "", http.StatusOK)
+	if err != nil {
+		return err
+	}
+	var canonical struct {
+		Data       []canonicalCLIComment `json:"data"`
+		NextCursor *string               `json:"next_cursor"`
+		HasMore    *bool                 `json:"has_more"`
+	}
+	if json.Unmarshal(data, &canonical) != nil || canonical.Data == nil || !strongTaskValidator(headers.Get("ETag")) {
+		return newExitError(ExitOperation, "Comment page representation is incomplete")
+	}
+	page := struct {
+		Items      []cliComment
+		NextCursor *string
+		HasMore    *bool
+	}{Items: make([]cliComment, 0, len(canonical.Data)), NextCursor: canonical.NextCursor, HasMore: canonical.HasMore}
+	for _, comment := range canonical.Data {
+		projected, e := comment.legacy(workspace.ID, item.ID)
+		if e != nil {
+			return e
+		}
+		page.Items = append(page.Items, projected)
 	}
 	if page.Items == nil || page.HasMore == nil {
 		return newExitError(ExitOperation, "comment page response is incomplete")
@@ -400,7 +384,7 @@ func runTaskCommentsPage(ctx context.Context, output, diagnostics io.Writer, opt
 	if len(page.Items) > options.limit || (*page.HasMore && (page.NextCursor == nil || *page.NextCursor == "")) || (!*page.HasMore && page.NextCursor != nil && *page.NextCursor != "") {
 		return newExitError(ExitOperation, "comment page response has invalid continuation or exceeds its limit")
 	}
-	if page.NextCursor != nil && (len(*page.NextCursor) > 2048 || safeInline(*page.NextCursor) != *page.NextCursor) {
+	if page.NextCursor != nil && (len(*page.NextCursor) > 4096 || safeInline(*page.NextCursor) != *page.NextCursor) {
 		return newExitError(ExitOperation, "comment page response has an invalid cursor")
 	}
 	for _, item := range page.Items {
@@ -518,17 +502,31 @@ func (e lifecycleConflictError) Unwrap() error { return e.exitError }
 // servers that predate lifecycle error codes.
 func lifecycleConflict(body io.Reader) error {
 	var payload struct {
-		Error struct {
+		Reason string `json:"reason"`
+		Error  struct {
 			Code string `json:"code"`
 		} `json:"error"`
+		Choices []struct {
+			StatusID string `json:"status_id"`
+			Name     string `json:"name"`
+		} `json:"choices"`
 	}
 	if json.NewDecoder(io.LimitReader(body, 64*1024)).Decode(&payload) != nil {
 		return nil
 	}
 	var message string
-	switch payload.Error.Code {
+	code := payload.Reason
+	if code == "" {
+		code = payload.Error.Code
+	}
+	switch code {
 	case "completion_target_required":
-		message = "several Statuses count as completed for this Task; completion needs an explicit destination Status, which this command cannot choose; complete it in the web app or MCP with a target_status_id"
+		message = "several Statuses count as completed for this Task; completion needs an explicit destination Status; select an applicable --target-status-id before a new operation"
+		for _, choice := range payload.Choices {
+			if canonicalIdentifier(choice.StatusID) {
+				message += "\n  " + choice.StatusID + "  " + safeInline(choice.Name)
+			}
+		}
 	case "workflow_status_unavailable":
 		message = "the Project has no Status for this action; ask a Workspace administrator to review the Project lifecycle"
 	case "lifecycle_migration_pending":
@@ -538,5 +536,5 @@ func lifecycleConflict(body io.Reader) error {
 	default:
 		return nil
 	}
-	return lifecycleConflictError{newExitError(ExitConflict, "%s (%s)", message, payload.Error.Code).(*exitError)}
+	return lifecycleConflictError{newExitError(ExitConflict, "%s (%s)", message, code).(*exitError)}
 }

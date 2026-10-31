@@ -288,6 +288,7 @@ func TestOperationRecoverySupportsEveryIntegratedSourceWithoutFetchingResults(t 
 		// A repository command is not its result sync run. This distinct source UUID
 		// prevents imposing the Agent run identity relation on every source family.
 		{"repository", "getKnowledgeRepositorySyncRun", "/api/v1/workspaces/" + operationFixtureWorkspace + "/knowledge-repository/runs/" + operationFixtureAgent},
+		{"work-change-set", "getChangeSetOperationResult", "/api/v1/workspaces/" + operationFixtureWorkspace + "/change-set-operations/" + operationFixtureID + "/result"},
 	} {
 		for _, action := range []string{"show", "cancel", "wait"} {
 			t.Run(source.name+"/"+action, func(t *testing.T) {
@@ -304,10 +305,12 @@ func TestOperationRecoverySupportsEveryIntegratedSourceWithoutFetchingResults(t 
 				server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					calls++
 					method := http.MethodGet
+					path := "/api/v1/operations/" + operationFixtureID
 					if action == "cancel" {
 						method = http.MethodPost
+						path += "/cancel"
 					}
-					if r.Method != method || r.URL.Path != "/api/v1/operations/"+operationFixtureID || r.URL.RawQuery != "" {
+					if r.Method != method || r.URL.Path != path || r.URL.RawQuery != "" {
 						t.Errorf("unexpected dispatch: %s %s", r.Method, r.URL)
 					}
 					if action == "cancel" && r.Header.Get("Idempotency-Key") != "prepared-operation-cancel-01" {
@@ -334,6 +337,7 @@ func TestOperationSourceReferencesRefuseUnsafeOrCrossBoundResults(t *testing.T) 
 	prefix := "/api/v1/workspaces/" + operationFixtureWorkspace
 	for _, ref := range []cliOperationResult{
 		{"authorized-resource", "getLifecycleMigration", prefix + "/lifecycle-migrations/" + operationFixtureAgent, "application/json"},
+		{"authorized-resource", "getChangeSetOperationResult", prefix + "/change-set-operations/" + operationFixtureAgent + "/result", "application/json"},
 		{"authorized-resource", "getWorkspaceKnowledgeAnswer", prefix + "/knowledge/answers/" + operationFixtureAgent, "application/json"},
 		{"authorized-resource", "getKnowledgeRepositorySyncRun", prefix + "/knowledge-repository/runs/00000000-0000-0000-0000-000000000000", "application/json"},
 		{"authorized-resource", "getWorkspaceKnowledgeAnswer", prefix + "/lifecycle-migrations/" + operationFixtureID, "application/json"},

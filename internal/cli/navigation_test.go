@@ -20,7 +20,7 @@ func TestWorkspaceCommandsListCurrentAndShow(t *testing.T) {
 		case "/api/v1/dev/workspace":
 			_, _ = io.WriteString(response, `{"name":"Assign","slug":"assign","role":"owner"}`)
 		case "/api/v1/dev/workspaces":
-			_, _ = io.WriteString(response, `{"items":[{"name":"Assign","slug":"assign","role":"owner"},{"name":"Labs","slug":"labs","role":"member"}],"next_cursor":null,"has_more":false}`)
+			_, _ = io.WriteString(response, `{"data":[{"name":"Assign","slug":"assign","role":"owner"},{"name":"Labs","slug":"labs","role":"member"}],"next_cursor":null,"has_more":false}`)
 		default:
 			t.Fatalf("unexpected path %s", request.URL.Path)
 		}

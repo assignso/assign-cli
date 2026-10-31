@@ -262,7 +262,7 @@ func runWorkspaceCurrent(ctx context.Context, output io.Writer, opts *options, c
 
 func runWorkspaceList(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client) error {
 	var page struct {
-		Items   []cliWorkspace `json:"items"`
+		Items   []cliWorkspace `json:"data"`
 		HasMore bool           `json:"has_more"`
 	}
 	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/dev/workspaces?limit=100", nil, &page); err != nil {

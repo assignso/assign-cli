@@ -236,22 +236,21 @@ func TestFindAliasUsesSearch(t *testing.T) {
 }
 
 func TestTaskAliasUsesNamespacedAction(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/api/v1/cli/tasks/PRO-123/done" || request.Header.Get("If-Match") != `"7"` {
-			t.Fatalf("request = %s If-Match=%q", request.URL.Path, request.Header.Get("If-Match"))
+	server := httptest.NewTLSServer(taskActionFixtureHandler(t, "PRO-123", "7", func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/v1/tasks/"+taskActionFixtureTask+"/complete" || request.Header.Get("If-Match") != taskActionFixtureETag {
+			t.Errorf("request = %s If-Match=%q", request.URL.Path, request.Header.Get("If-Match"))
 		}
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"task":{"code":"PRO-123","title":"Ship now"}}`))
+		taskActionFixtureResult(response, "PRO-123", false)
 	}))
 	defer server.Close()
-	t.Setenv("ASSIGN_TOKEN", "apt_test")
+	t.Setenv("ASSIGN_TOKEN", "prepared-task-token")
 	var stdout, stderr bytes.Buffer
 	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
 	command.SetArgs([]string{"--host", server.URL, "t", "done", "PRO-123", "--revision", "7"})
 	if err := command.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("execute: %v", err)
 	}
-	if stdout.String() != "PRO-123  Ship now\n" || stderr.String() != "" {
+	if stdout.String() != "PRO-123  Ship now\n" || !strings.Contains(stderr.String(), "--task-id '"+taskActionFixtureTask+"'") {
 		t.Fatalf("output = (%q, %q)", stdout.String(), stderr.String())
 	}
 }
@@ -382,10 +381,10 @@ func TestTaskDoneSurfacesLifecycleConflictsAndKeepsRevisionConflicts(t *testing.
 		want string
 		not  string
 	}{
-		"ambiguous completion": {`{"error":{"code":"completion_target_required","message":"choose"},"choices":[{"status_id":"x","name":"Done"}]}`, "explicit destination Status", "reconcile current state"},
+		"ambiguous completion": {`{"reason":"completion_target_required","choices":[{"status_id":"x","name":"Done"}]}`, "explicit destination Status", "reconcile current state"},
 		"pending migration":    {`{"error":{"code":"lifecycle_migration_pending","message":"pending"}}`, "migration is still applying", "run assign task show"},
-		"stale revision":       {`{"error":{"code":"revision_conflict","message":"stale"}}`, "run assign task show PRO-9", ""},
-		"legacy empty body":    {``, "run assign task show PRO-9", ""},
+		"stale revision":       {`{"error":{"code":"revision_conflict","message":"stale"}}`, "reconcile current state", ""},
+		"legacy empty body":    {``, "reconcile current state", ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -397,7 +396,7 @@ func TestTaskDoneSurfacesLifecycleConflictsAndKeepsRevisionConflicts(t *testing.
 			t.Setenv("ASSIGN_TOKEN", "apt_test")
 			var stdout, stderr bytes.Buffer
 			command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
-			command.SetArgs([]string{"--host", server.URL, "done", "PRO-9", "--revision", "7"})
+			command.SetArgs([]string{"--host", server.URL, "done", "PRO-9", "--task-id", taskActionFixtureTask, "--if-match", taskActionFixtureETag, "--idempotency-key", taskActionFixtureKey})
 			err := command.ExecuteContext(context.Background())
 			if exitCode(err) != ExitConflict || err == nil || !strings.Contains(err.Error(), tc.want) || (tc.not != "" && strings.Contains(err.Error(), tc.not)) {
 				t.Fatalf("code=%d err=%v", exitCode(err), err)
@@ -408,13 +407,13 @@ func TestTaskDoneSurfacesLifecycleConflictsAndKeepsRevisionConflicts(t *testing.
 
 func TestTaskDoneSendsExplicitTargetStatus(t *testing.T) {
 	var query string
-	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+	server := httptest.NewTLSServer(taskActionFixtureHandler(t, "PRO-9", "3", func(response http.ResponseWriter, request *http.Request) {
 		query = request.URL.RawQuery
 		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"task":{"code":"PRO-9","title":"Ship"},"reassigned":false}`))
+		taskActionFixtureResult(response, "PRO-9", false)
 	}))
 	defer server.Close()
-	t.Setenv("ASSIGN_TOKEN", "apt_test")
+	t.Setenv("ASSIGN_TOKEN", "prepared-task-token")
 	const target = "0196a000-0000-7000-8000-000000000001"
 	var stdout, stderr bytes.Buffer
 	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())

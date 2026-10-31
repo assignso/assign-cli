@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -234,12 +235,9 @@ func runTaskShow(ctx context.Context, output io.Writer, opts *options, client *h
 	if code == "" {
 		return newExitError(ExitArguments, "Task code must not be empty")
 	}
-	var item cliTask
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/tasks/"+url.PathEscape(code), nil, &item); err != nil {
-		return err
-	}
-	if item.Code == "" || item.Title == "" || item.ProjectCode == "" || item.StatusCategory == "" || item.Revision < 1 || item.URL == "" {
-		return newExitError(ExitOperation, "Task response is incomplete")
+	item, readErr := readResourceTaskShow(ctx, opts, client, code)
+	if readErr != nil {
+		return readErr
 	}
 	var err error
 	switch field {
@@ -265,13 +263,17 @@ var statusUUIDPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a
 
 func newTaskActionCommand(action, description string, opts *options, client *http.Client) *cobra.Command {
 	var revision int64
-	var key, targetStatusID string
+	var key, targetStatusID, taskID, condition string
 	command := &cobra.Command{
 		Use:   action + " <task-code>",
 		Short: description,
 		Args:  exactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			if revision < 1 {
+			if taskID != "" || condition != "" {
+				if !canonicalIdentifier(taskID) || !taskActionValidator(condition) || key == "" || revision != 0 {
+					return newExitError(ExitArguments, "recovery requires --task-id, the original opaque --if-match and --idempotency-key; omit --revision")
+				}
+			} else if revision < 1 {
 				return newExitError(ExitArguments, "--revision must be a positive Task revision; run assign task show <task-code> to read it")
 			}
 			requestKey, err := mutationKey(key)
@@ -282,44 +284,25 @@ func newTaskActionCommand(action, description string, opts *options, client *htt
 			if err != nil {
 				return err
 			}
-			query := ""
+			if safeInline(code) != code {
+				return newExitError(ExitArguments, "Task code must not contain terminal control characters")
+			}
 			if targetStatusID != "" {
 				if !statusUUIDPattern.MatchString(targetStatusID) {
 					return newExitError(ExitArguments, "--target-status-id must be a Status UUID")
 				}
-				query = "?target_status_id=" + url.QueryEscape(targetStatusID)
 			}
-			return runTaskAction(command.Context(), command.OutOrStdout(), opts.host, client, opts.credentials, action+query, code, revision, requestKey)
+			return runTaskAction(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, action, code, revision, requestKey, targetStatusID, taskID, condition)
 		},
 	}
 	if action == "done" {
 		command.Flags().StringVar(&targetStatusID, "target-status-id", "", "Completing Status UUID; required when several Statuses count as completed")
 	}
 	command.Flags().Int64Var(&revision, "revision", 0, "Current Task revision, as printed by assign task show (optimistic concurrency)")
+	command.Flags().StringVar(&taskID, "task-id", "", "Original immutable Task ID for an identical retry")
+	command.Flags().StringVar(&condition, "if-match", "", "Original opaque Task validator for an identical retry")
 	command.Flags().StringVar(&key, "idempotency-key", "", "Retain a 16–200 character key for identical retries; generated when omitted")
 	return command
-}
-
-func runTaskAction(ctx context.Context, output io.Writer, rawHost string, client *http.Client, store credentialStore, action, code string, revision int64, key string) error {
-	var result struct {
-		Task struct {
-			Code  string `json:"code"`
-			Title string `json:"title"`
-		} `json:"task"`
-	}
-	err := taskMutation(ctx, &options{host: rawHost, credentials: store}, client, "/api/v1/cli/tasks/"+url.PathEscape(code)+"/"+action, nil, key, revision, http.StatusOK, &result)
-	if err != nil {
-		var lifecycle lifecycleConflictError
-		if exitCode(err) == ExitConflict && !errors.As(err, &lifecycle) {
-			return newExitError(ExitConflict, "Task write conflict; run assign task show %s to reconcile current state before a new operation; identical retries retain the original revision and --idempotency-key %s", code, key)
-		}
-		return err
-	}
-	if result.Task.Code == "" || result.Task.Title == "" {
-		return newExitError(ExitOperation, "Task action response is incomplete; reconcile with --idempotency-key %s and identical arguments", key)
-	}
-	_, err = fmt.Fprintf(output, "%s  %s\n", safeInline(result.Task.Code), safeInline(result.Task.Title))
-	return err
 }
 
 func newIdempotencyKey() (string, error) {
@@ -333,7 +316,7 @@ func newIdempotencyKey() (string, error) {
 func newSearchCommand(opts *options, client *http.Client) *cobra.Command {
 	return &cobra.Command{
 		Use:   "search <query>",
-		Short: "Search Tasks and Documents in the token Workspace",
+		Short: "Search content in the token Workspace",
 		Args:  exactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			return runSearch(command.Context(), command.OutOrStdout(), opts.host, client, opts.credentials, args[0])
@@ -341,33 +324,40 @@ func newSearchCommand(opts *options, client *http.Client) *cobra.Command {
 	}
 }
 
+// Canonical SearchResultList: keep identifiers separate from immutable IDs.
+// People and other matches without a display identifier use their resource ID.
 type cliSearchResponse struct {
 	Items []struct {
 		ResourceType string `json:"resource_type"`
-		Code         string `json:"code"`
+		ResourceID   string `json:"resource_id"`
+		Identifier   string `json:"identifier"`
 		Title        string `json:"title"`
-	} `json:"items"`
+	} `json:"data"`
 	NextCursor *string `json:"next_cursor"`
 	HasMore    bool    `json:"has_more"`
 }
 
 func runSearch(ctx context.Context, output io.Writer, rawHost string, client *http.Client, store credentialStore, query string) error {
-	host, err := validatedHost(rawHost)
-	if err != nil {
-		return newExitError(ExitArguments, "%s", err)
-	}
-	token, err := authorizationToken(ctx, host, client, store)
+	transport, err := newOperationTransport(ctx, &options{host: rawHost, credentials: store}, client)
 	if err != nil {
 		return err
 	}
-	endpoint := host + "/api/v1/cli/search?q=" + url.QueryEscape(query)
+	workspace, err := resourceWorkspace(ctx, transport, "")
+	if err != nil {
+		return err
+	}
+	// Keep the existing single page of up to 50 results, with no resource-type
+	// filter or client-side ranking. The canonical service owns query bounds.
+	values := url.Values{"q": {query}, "limit": {"50"}}
+	endpoint := transport.host + "/api/v1/workspaces/" + workspace.ID + "/search?" + values.Encode()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return newExitError(ExitOperation, "prepare search request")
 	}
 	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Authorization", "Bearer "+token)
-	response, err := client.Do(request)
+	request.Header.Set("Accept-Encoding", "identity")
+	request.Header.Set("Authorization", "Bearer "+transport.token)
+	response, err := transport.client.Do(request)
 	if err != nil {
 		return newExitError(ExitOperation, "request search: %v", err)
 	}
@@ -375,19 +365,32 @@ func runSearch(ctx context.Context, output io.Writer, rawHost string, client *ht
 	if response.StatusCode != http.StatusOK {
 		return productReadError(response, "search")
 	}
+	const maxSearchResponseBytes = 2 * 1024 * 1024
+	media, _, mediaErr := mime.ParseMediaType(response.Header.Get("Content-Type"))
+	encoding := response.Header.Get("Content-Encoding")
+	data, readErr := io.ReadAll(io.LimitReader(response.Body, maxSearchResponseBytes+1))
+	if mediaErr != nil || media != "application/json" || (encoding != "" && encoding != "identity") || readErr != nil || len(data) > maxSearchResponseBytes {
+		return newExitError(ExitOperation, "search response is incomplete or exceeds its limit")
+	}
 	var page cliSearchResponse
-	decoder := json.NewDecoder(io.LimitReader(response.Body, 2*1024*1024))
-	if err := decoder.Decode(&page); err != nil {
+	if json.Unmarshal(data, &page) != nil || page.Items == nil || len(page.Items) > 50 || page.HasMore != (page.NextCursor != nil) {
 		return newExitError(ExitOperation, "decode search response")
 	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return newExitError(ExitOperation, "decode search response")
+	if page.NextCursor != nil && (*page.NextCursor == "" || len(*page.NextCursor) > 8192 || safeInline(*page.NextCursor) != *page.NextCursor) {
+		return newExitError(ExitOperation, "search continuation is invalid")
 	}
+	// Validate the complete page before writing any result to stdout.
 	for _, item := range page.Items {
-		if item.ResourceType == "" || item.Code == "" || item.Title == "" {
+		if item.ResourceType == "" || !canonicalIdentifier(item.ResourceID) || item.Title == "" {
 			return newExitError(ExitOperation, "search response is incomplete")
 		}
-		if _, err := fmt.Fprintf(output, "%s  %s\n", item.Code, item.Title); err != nil {
+	}
+	for _, item := range page.Items {
+		identifier := item.Identifier
+		if identifier == "" {
+			identifier = item.ResourceID
+		}
+		if _, err := fmt.Fprintf(output, "%s  %s\n", identifier, item.Title); err != nil {
 			return err
 		}
 	}
