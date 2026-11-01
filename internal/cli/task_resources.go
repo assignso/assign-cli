@@ -193,6 +193,10 @@ func readResourceTaskShow(ctx context.Context, opts *options, client *http.Clien
 		return cliTask{}, err
 	}
 	defer transport.client.CloseIdleConnections()
+	return canonicalTaskNavigation(resource, workspace)
+}
+
+func canonicalTaskNavigation(resource canonicalReadTask, workspace cliWorkspace) (cliTask, error) {
 	projectCode, _, found := strings.Cut(resource.Code, "-")
 	revision, err := strconv.ParseInt(resource.Revision, 10, 64)
 	if !found || projectCode == "" || resource.Title == "" || err != nil || revision < 1 {

@@ -397,52 +397,34 @@ func runSearch(ctx context.Context, output io.Writer, rawHost string, client *ht
 	return nil
 }
 
-type cliMyWorkResponse struct {
-	Items []struct {
-		Code           string `json:"code"`
-		Title          string `json:"title"`
-		StatusCategory string `json:"status_category"`
-	} `json:"items"`
-	NextCursor *string `json:"next_cursor"`
-	HasMore    bool    `json:"has_more"`
-}
-
 func runMyWork(ctx context.Context, output io.Writer, rawHost string, client *http.Client, store credentialStore) error {
-	host, err := validatedHost(rawHost)
-	if err != nil {
-		return newExitError(ExitArguments, "%s", err)
-	}
-	token, err := authorizationToken(ctx, host, client, store)
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
+	transport, err := newOperationTransport(ctx, &options{host: rawHost, credentials: store}, client)
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, host+"/api/v1/cli/my-work", nil)
+	defer transport.client.CloseIdleConnections()
+	workspace, err := resourceWorkspace(ctx, transport, "")
 	if err != nil {
-		return newExitError(ExitOperation, "prepare My Work request")
+		return err
 	}
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Authorization", "Bearer "+token)
-	response, err := client.Do(request)
+	data, _, err := taskResourceExchange(ctx, transport, http.MethodGet, "/api/v1/workspaces/"+workspace.ID+"/work?limit=100", "", "", http.StatusOK)
 	if err != nil {
-		return newExitError(ExitOperation, "request My Work: %v", err)
+		return err
 	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		return productReadError(response, "My Work")
+	var page struct {
+		Data []canonicalReadTask `json:"data"`
+		Next *string             `json:"next_cursor"`
 	}
-	var page cliMyWorkResponse
-	decoder := json.NewDecoder(io.LimitReader(response.Body, 2*1024*1024))
-	if err := decoder.Decode(&page); err != nil {
-		return newExitError(ExitOperation, "decode My Work response")
+	if json.Unmarshal(data, &page) != nil || page.Data == nil || len(page.Data) > 100 {
+		return newExitError(ExitOperation, "My Work response is incomplete")
 	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return newExitError(ExitOperation, "decode My Work response")
-	}
-	for _, item := range page.Items {
-		if item.Code == "" || item.Title == "" || item.StatusCategory == "" {
-			return newExitError(ExitOperation, "My Work response is incomplete")
+	for _, item := range page.Data {
+		if !canonicalIdentifier(item.ID) || item.WorkspaceID != workspace.ID || item.Code == "" || item.Title == "" || !canonicalPositiveDecimal(item.Revision) {
+			return newExitError(ExitOperation, "My Work identity is incomplete")
 		}
-		if _, err := fmt.Fprintf(output, "%s  %s\n", item.Code, item.Title); err != nil {
+		if _, err := fmt.Fprintf(output, "%s  %s\n", safeInline(item.Code), safeInline(item.Title)); err != nil {
 			return err
 		}
 	}

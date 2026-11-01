@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"regexp"
 	"slices"
 	"strconv"
@@ -54,8 +53,8 @@ func newMilestoneCommand(opts *options, client *http.Client) *cobra.Command {
 			return err
 		}
 		parts := milestoneCodePattern.FindStringSubmatch(code)
-		var item cliMilestone
-		if err := authorizedJSON(command.Context(), opts, client, http.MethodGet, "/api/v1/cli/milestones/"+url.PathEscape(code), nil, &item); err != nil {
+		item, err := readMilestoneResource(command.Context(), opts, client, code)
+		if err != nil {
 			return err
 		}
 		if item.ID == "" || item.WorkspaceID == "" || item.ProjectID == "" || item.Name == "" || item.Status == "" || item.Revision < 1 || item.Code == nil || *item.Code != code || item.MilestoneNumber == nil || *item.MilestoneNumber != parts[2] || item.Progress == nil {

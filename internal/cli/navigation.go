@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -304,19 +305,27 @@ func runWorkspaceSwitch(ctx context.Context, output io.Writer, opts *options, cl
 }
 
 func runProjectList(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client) error {
-	var page struct {
-		Items   []cliProject `json:"items"`
-		HasMore bool         `json:"has_more"`
-	}
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/projects?limit=100", nil, &page); err != nil {
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
+	transport, err := newOperationTransport(ctx, opts, client)
+	if err != nil {
 		return err
 	}
-	for _, project := range page.Items {
-		if _, err := fmt.Fprintf(output, "%s  %s\n", safeInline(project.Code), safeInline(project.Name)); err != nil {
+	defer transport.client.CloseIdleConnections()
+	workspace, err := resourceWorkspace(ctx, transport, "")
+	if err != nil {
+		return err
+	}
+	items, next, err := projectResourcePage(ctx, transport, workspace.ID, "", "")
+	if err != nil {
+		return err
+	}
+	for _, project := range items {
+		if _, err := fmt.Fprintf(output, "%s  %s\n", safeInline(project.Key), safeInline(project.Name)); err != nil {
 			return err
 		}
 	}
-	if page.HasMore {
+	if next != nil {
 		_, _ = fmt.Fprintln(diagnostics, "assign: more Projects are available; only the first 100 are shown")
 	}
 	return nil
@@ -351,12 +360,22 @@ func getProject(ctx context.Context, opts *options, client *http.Client, code st
 	if err != nil {
 		return cliProject{}, err
 	}
-	var project cliProject
-	err = authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/projects/"+url.PathEscape(code), nil, &project)
-	if err == nil && (project.Code == "" || project.Name == "" || project.URL == "") {
-		err = newExitError(ExitOperation, "Project response is incomplete")
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
+	transport, err := newOperationTransport(ctx, opts, client)
+	if err != nil {
+		return cliProject{}, err
 	}
-	return project, err
+	defer transport.client.CloseIdleConnections()
+	workspace, err := resourceWorkspace(ctx, transport, "")
+	if err != nil {
+		return cliProject{}, err
+	}
+	project, err := findProjectResource(ctx, transport, workspace.ID, code)
+	if err != nil {
+		return cliProject{}, err
+	}
+	return projectNavigation(project, workspace)
 }
 
 func runProjectShow(ctx context.Context, output io.Writer, opts *options, client *http.Client, code string) error {
@@ -394,23 +413,35 @@ func runProjectSwitch(ctx context.Context, output io.Writer, opts *options, clie
 }
 
 func runDocumentList(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client, projectCode string) error {
-	query := url.Values{"limit": []string{"100"}}
-	if code := strings.ToUpper(strings.TrimSpace(projectCode)); code != "" {
-		query.Set("project_code", code)
-	}
-	var page struct {
-		Items   []cliDocument `json:"items"`
-		HasMore bool          `json:"has_more"`
-	}
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/documents?"+query.Encode(), nil, &page); err != nil {
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
+	transport, err := newOperationTransport(ctx, opts, client)
+	if err != nil {
 		return err
 	}
-	for _, item := range page.Items {
+	defer transport.client.CloseIdleConnections()
+	workspace, err := resourceWorkspace(ctx, transport, "")
+	if err != nil {
+		return err
+	}
+	query := url.Values{"limit": {"100"}}
+	if code := strings.ToUpper(strings.TrimSpace(projectCode)); code != "" {
+		id, err := resolveCreateProject(ctx, transport, workspace.ID, code)
+		if err != nil {
+			return err
+		}
+		query.Set("project_id", id)
+	}
+	items, next, err := documentResourcePage(ctx, transport, workspace.ID, query)
+	if err != nil {
+		return err
+	}
+	for _, item := range items {
 		if _, err := fmt.Fprintf(output, "%s  %s\n", safeInline(item.Path), safeInline(item.Title)); err != nil {
 			return err
 		}
 	}
-	if page.HasMore {
+	if next != nil {
 		_, _ = fmt.Fprintln(diagnostics, "assign: more Documents are available; only the first 100 are shown")
 	}
 	return nil
@@ -436,22 +467,53 @@ func runDocumentShow(ctx context.Context, output io.Writer, opts *options, clien
 }
 
 func getDocument(ctx context.Context, opts *options, client *http.Client, path string) (cliDocument, error) {
+	return readResourceDocument(ctx, opts, client, path, true)
+}
+
+func readResourceDocument(ctx context.Context, opts *options, client *http.Client, path string, readContent bool) (cliDocument, error) {
 	path = strings.TrimSpace(path)
 	if path == "" {
 		return cliDocument{}, newExitError(ExitArguments, "Document path is required")
 	}
-	var item cliDocument
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/documents/"+url.PathEscape(path), nil, &item); err != nil {
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
+	transport, err := newOperationTransport(ctx, opts, client)
+	if err != nil {
 		return cliDocument{}, err
 	}
-	if item.Path == "" || item.Title == "" || item.URL == "" {
-		return cliDocument{}, newExitError(ExitOperation, "Document response is incomplete")
+	defer transport.client.CloseIdleConnections()
+	workspace, err := resourceWorkspace(ctx, transport, "")
+	if err != nil {
+		return cliDocument{}, err
 	}
-	return item, nil
+	query := url.Values{"path": {path}, "limit": {"1"}}
+	items, next, err := documentResourcePage(ctx, transport, workspace.ID, query)
+	if err != nil {
+		return cliDocument{}, err
+	}
+	if len(items) != 1 || next != nil || items[0].Path != path {
+		return cliDocument{}, newExitError(ExitContext, "exact Document is unavailable or incomplete")
+	}
+	resource := items[0]
+	if err = navigationURL(resource.WebURL, workspace, "documents", resource.Path); err != nil {
+		return cliDocument{}, err
+	}
+	revision, err := strconv.ParseInt(resource.Revision, 10, 64)
+	if err != nil || revision < 1 {
+		return cliDocument{}, newExitError(ExitOperation, "Document revision is invalid")
+	}
+	body, truncated := "", false
+	if readContent {
+		body, truncated, err = documentMarkdown(ctx, transport, resource.ID)
+		if err != nil {
+			return cliDocument{}, err
+		}
+	}
+	return cliDocument{Path: resource.Path, Title: resource.Title, Visibility: resource.Visibility, Revision: revision, URL: resource.WebURL, Body: body, Truncated: truncated}, nil
 }
 
 func runDocumentURL(ctx context.Context, output io.Writer, opts *options, client *http.Client, path string, launch bool) error {
-	item, err := getDocument(ctx, opts, client, path)
+	item, err := readResourceDocument(ctx, opts, client, path, false)
 	if err != nil {
 		return err
 	}

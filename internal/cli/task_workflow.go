@@ -274,7 +274,7 @@ func (p taskPageOptions) validate() error {
 	if p.limit < 1 || p.limit > 100 {
 		return newExitError(ExitArguments, "--limit must be between 1 and 100")
 	}
-	if len(p.cursor) > 2048 || safeInline(p.cursor) != p.cursor {
+	if len(p.cursor) > 8192 || safeInline(p.cursor) != p.cursor {
 		return newExitError(ExitArguments, "cursor is invalid or too long")
 	}
 	if p.field != "" && p.field != "code" && p.field != "next_cursor" && p.field != "has_more" {
@@ -424,26 +424,69 @@ func runProjectTaskPage(ctx context.Context, output, diagnostics io.Writer, opts
 	if err != nil {
 		return err
 	}
-	query := url.Values{"limit": {fmt.Sprint(options.limit)}}
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
+	transport, err := newOperationTransport(ctx, opts, client)
+	if err != nil {
+		return err
+	}
+	defer transport.client.CloseIdleConnections()
+	workspace, err := resourceWorkspace(ctx, transport, "")
+	if err != nil {
+		return err
+	}
+	project, err := resolveCreateProject(ctx, transport, workspace.ID, code)
+	if err != nil {
+		return err
+	}
+	query := url.Values{"project_id": {project}, "limit": {fmt.Sprint(options.limit)}, "state": {"all"}, "include_archived": {"false"}}
 	if options.cursor != "" {
 		query.Set("cursor", options.cursor)
 	}
-	var page struct {
-		Items      []cliTask `json:"items"`
-		NextCursor *string   `json:"next_cursor"`
-		HasMore    *bool     `json:"has_more"`
-	}
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/projects/"+url.PathEscape(code)+"/tasks?"+query.Encode(), nil, &page); err != nil {
+	data, _, err := taskResourceExchange(ctx, transport, http.MethodGet, "/api/v1/workspaces/"+workspace.ID+"/tasks?"+query.Encode(), "", "", http.StatusOK)
+	if err != nil {
 		return err
 	}
-	if page.Items == nil || page.HasMore == nil {
-		return newExitError(ExitOperation, "Task page response is incomplete")
+	var wire struct {
+		Data       []canonicalReadTask `json:"data"`
+		NextCursor *string             `json:"next_cursor"`
+		Coverage   string              `json:"coverage"`
+		Included   struct {
+			Statuses []struct {
+				ID       string `json:"id"`
+				Category string `json:"category"`
+			} `json:"statuses"`
+		} `json:"included"`
 	}
-	if len(page.Items) > options.limit || (*page.HasMore && (page.NextCursor == nil || *page.NextCursor == "")) || (!*page.HasMore && page.NextCursor != nil && *page.NextCursor != "") {
-		return newExitError(ExitOperation, "Task page response has invalid continuation or exceeds its limit")
+	if unmarshalResourcePage(data, &wire) != nil || wire.Data == nil || len(wire.Data) > options.limit {
+		return newExitError(ExitOperation, "canonical Task page is incomplete")
 	}
-	if page.NextCursor != nil && (len(*page.NextCursor) > 2048 || safeInline(*page.NextCursor) != *page.NextCursor) {
-		return newExitError(ExitOperation, "Task page response has an invalid cursor")
+	if wire.Coverage != "" && wire.Coverage != "complete" {
+		return newExitError(ExitOperation, "Task page is partial; absence is unknown")
+	}
+	more := wire.NextCursor != nil
+	page := struct {
+		Items      []cliTask
+		NextCursor *string
+		HasMore    *bool
+	}{Items: make([]cliTask, 0, len(wire.Data)), NextCursor: wire.NextCursor, HasMore: &more}
+	if wire.NextCursor != nil && (*wire.NextCursor == "" || len(*wire.NextCursor) > 8192 || safeInline(*wire.NextCursor) != *wire.NextCursor) {
+		return newExitError(ExitOperation, "Task continuation is invalid")
+	}
+	for _, item := range wire.Data {
+		if !canonicalIdentifier(item.ID) || item.WorkspaceID != workspace.ID || item.ProjectID != project {
+			return newExitError(ExitOperation, "Task identity does not match the selected Project")
+		}
+		for _, status := range wire.Included.Statuses {
+			if status.ID == item.StatusID {
+				item.Category = status.Category
+			}
+		}
+		projected, err := canonicalTaskNavigation(item, workspace)
+		if err != nil {
+			return err
+		}
+		page.Items = append(page.Items, projected)
 	}
 	if options.format == "json" {
 		for _, item := range page.Items {

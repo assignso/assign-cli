@@ -166,18 +166,18 @@ func TestProjectTaskPagesExposeOpaqueContinuation(t *testing.T) {
 	requests := 0
 	cursor := "opaque/+cursor?=&"
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests++
-		if r.URL.Path != "/api/v1/cli/projects/PRO/tasks" || r.URL.Query().Get("limit") != "1" {
-			t.Errorf("unexpected request %s", r.URL)
-		}
-		if r.URL.Query().Get("cursor") == "" {
-			_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{map[string]string{"code": "PRO-1", "title": "first"}}, "has_more": true, "next_cursor": cursor})
+		if r.URL.Path != "/api/v1/workspaces/11111111-1111-4111-8111-111111111111/tasks" {
+			canonicalNavigationTestHandler(t, "assign", "https://app.assign.so")(w, r)
 			return
 		}
-		if r.URL.Query().Get("cursor") != cursor {
-			t.Errorf("cursor corrupted: %q", r.URL.Query().Get("cursor"))
+		requests++
+		if r.URL.Query().Get("limit") != "1" || r.URL.Query().Get("project_id") != "22222222-2222-4222-8222-222222222222" {
+			t.Errorf("wrong scoped query %s", r.URL)
 		}
-		_, _ = io.WriteString(w, `{"items":[{"code":"PRO-2","title":"second"}],"has_more":false,"next_cursor":null}`)
+		if got := r.URL.Query().Get("cursor"); got != "" && got != cursor {
+			t.Errorf("corrupted cursor %q", got)
+		}
+		canonicalNavigationTestHandler(t, "assign", "https://app.assign.so")(w, r)
 	}))
 	defer server.Close()
 	out, _, err := executeTaskFixture(t, server, "", "project", "tasks", "PRO", "--limit", "1", "--field", "next_cursor")
@@ -205,8 +205,15 @@ func TestProjectTaskPagesExposeOpaqueContinuation(t *testing.T) {
 
 func TestProjectTaskInvalidContinuationFailsWithoutOutput(t *testing.T) {
 	t.Setenv("ASSIGN_TOKEN", "apt_fixture")
-	for _, body := range []string{`{"items":[],"has_more":true}`, `{"items":[],"has_more":false,"next_cursor":"unexpected"}`, `{"items":[{"code":"PRO-1","title":"ok"},{"code":"PRO-2","title":"extra"}],"has_more":false}`} {
-		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = io.WriteString(w, body) }))
+	for _, body := range []string{`{"data":[]}`, `{"data":[],"next_cursor":""}`, `{"data":[{},{}],"next_cursor":null}`} {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/api/v1/workspaces/11111111-1111-4111-8111-111111111111/tasks" {
+				canonicalNavigationTestHandler(t, "assign", "https://app.assign.so")(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, body)
+		}))
 		out, _, err := executeTaskFixture(t, server, "", "project", "tasks", "PRO", "--limit", "1")
 		server.Close()
 		if err == nil || out != "" {

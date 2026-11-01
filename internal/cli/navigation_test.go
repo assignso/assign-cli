@@ -96,26 +96,7 @@ func TestWorkspaceSwitchRefusesEnvironmentTokenBeforeRequest(t *testing.T) {
 }
 
 func TestProjectCommandsListSwitchShowAndTasks(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		response.Header().Set("Content-Type", "application/json")
-		switch request.URL.Path {
-		case "/api/v1/dev/workspace":
-			_, _ = io.WriteString(response, `{"name":"Assign","slug":"assign","role":"owner"}`)
-		case "/api/v1/cli/projects":
-			_, _ = io.WriteString(response, `{"items":[{"code":"PRO","name":"Product","path":"product","revision":3,"url":"https://app.assign.so/app/assign/projects/product"}],"next_cursor":null,"has_more":false}`)
-		case "/api/v1/cli/projects/PRO":
-			_, _ = io.WriteString(response, `{"code":"PRO","name":"Product","path":"product","revision":3,"url":"https://app.assign.so/app/assign/projects/product"}`)
-		case "/api/v1/cli/projects/PRO/tasks":
-			_, _ = io.WriteString(response, `{"items":[{"code":"PRO-1","title":"Ship navigation","status_category":"todo"}],"next_cursor":null,"has_more":false}`)
-		case "/api/v1/cli/documents":
-			if request.URL.Query().Get("project_code") != "PRO" {
-				t.Fatalf("project_code = %q", request.URL.Query().Get("project_code"))
-			}
-			_, _ = io.WriteString(response, `{"items":[{"path":"release-plan","title":"Release plan","visibility":"project","revision":2,"url":"https://app.assign.so/app/assign/documents/release-plan"}],"next_cursor":null,"has_more":false}`)
-		default:
-			t.Fatalf("unexpected path %s", request.URL.Path)
-		}
-	}))
+	server := httptest.NewTLSServer(canonicalNavigationTestHandler(t, "assign", "https://app.assign.so"))
 	defer server.Close()
 	t.Setenv("ASSIGN_TOKEN", "apt_test")
 	contextPath := filepath.Join(t.TempDir(), "context.json")
@@ -147,20 +128,7 @@ func TestProjectCommandsListSwitchShowAndTasks(t *testing.T) {
 }
 
 func TestDocumentCommandsListAndShow(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		response.Header().Set("Content-Type", "application/json")
-		switch request.URL.Path {
-		case "/api/v1/cli/documents":
-			if request.URL.Query().Get("project_code") != "PRO" || request.URL.Query().Get("limit") != "100" {
-				t.Fatalf("query = %s", request.URL.RawQuery)
-			}
-			_, _ = io.WriteString(response, `{"items":[{"path":"release-plan","title":"Release plan","visibility":"project","revision":2,"url":"https://app.assign.so/app/assign/documents/release-plan"}],"next_cursor":null,"has_more":false}`)
-		case "/api/v1/cli/documents/release-plan":
-			_, _ = io.WriteString(response, `{"path":"release-plan","title":"Release plan","visibility":"project","revision":2,"url":"https://app.assign.so/app/assign/documents/release-plan","body":"Ship on Friday."}`)
-		default:
-			t.Fatalf("unexpected path %s", request.URL.Path)
-		}
-	}))
+	server := httptest.NewTLSServer(canonicalNavigationTestHandler(t, "assign", "https://app.assign.so"))
 	defer server.Close()
 	t.Setenv("ASSIGN_TOKEN", "apt_test")
 	opts := &options{host: server.URL, credentials: &memoryCredentialStore{}, contexts: &fileProjectContextStore{path: filepath.Join(t.TempDir(), "context.json")}}
@@ -187,17 +155,7 @@ func TestDocumentCommandsListAndShow(t *testing.T) {
 }
 
 func TestProjectAndDocumentBrowserHandoff(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		response.Header().Set("Content-Type", "application/json")
-		switch request.URL.Path {
-		case "/api/v1/cli/projects/PRO":
-			_, _ = io.WriteString(response, `{"code":"PRO","name":"Product","path":"product","revision":3,"url":"https://assign.so/acme/projects/product"}`)
-		case "/api/v1/cli/documents/release-plan":
-			_, _ = io.WriteString(response, `{"path":"release-plan","title":"Release plan","visibility":"project","revision":2,"url":"https://assign.so/acme/documents/release-plan"}`)
-		default:
-			t.Fatalf("unexpected path %s", request.URL.Path)
-		}
-	}))
+	server := httptest.NewTLSServer(canonicalNavigationTestHandler(t, "acme", "https://assign.so"))
 	defer server.Close()
 	t.Setenv("ASSIGN_TOKEN", "apt_test")
 	opened := ""
@@ -218,7 +176,7 @@ func TestProjectAndDocumentBrowserHandoff(t *testing.T) {
 	if err := project.ExecuteContext(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if output.String() != "https://assign.so/acme/projects/product\n" {
+	if output.String() != "https://assign.so/app/acme/projects/product\n" {
 		t.Fatalf("project URL output = %q", output.String())
 	}
 
@@ -227,7 +185,7 @@ func TestProjectAndDocumentBrowserHandoff(t *testing.T) {
 	if err := document.ExecuteContext(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if opened != "https://assign.so/acme/documents/release-plan" {
+	if opened != "https://assign.so/app/acme/documents/release-plan" {
 		t.Fatalf("opened URL = %q", opened)
 	}
 }
@@ -249,7 +207,7 @@ func TestBrowserHandoffRejectsUnsafeURLsAndPreservesSafeURLOnLaunchFailure(t *te
 	}
 
 	var output bytes.Buffer
-	safe := "https://assign.so/acme/projects/product"
+	safe := "https://assign.so/app/acme/projects/product"
 	err := printOrOpenURL(&output, &options{openURL: func(string) error { return errors.New("unavailable") }}, safe, true)
 	if err == nil || !strings.Contains(err.Error(), "open browser") {
 		t.Fatalf("launch error = %v", err)

@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -174,11 +175,18 @@ func TestBareCommandRequiresPersonalAPIToken(t *testing.T) {
 
 func TestBareCommandListsMyWorkWithBearerToken(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/api/v1/cli/my-work" || request.Header.Get("Authorization") != "Bearer apt_test" {
-			t.Fatalf("request = %s %q", request.URL.Path, request.Header.Get("Authorization"))
+		if request.Header.Get("Authorization") != "Bearer apt_test" {
+			t.Errorf("credential changed")
 		}
 		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"items":[{"code":"PRO-123","title":"Ship the slice","status_category":"started"}],"next_cursor":null,"has_more":false}`))
+		if request.URL.Path == "/api/v1/dev/workspace" {
+			io.WriteString(response, `{"id":"11111111-1111-4111-8111-111111111111","name":"Demo","slug":"demo","role":"owner"}`)
+			return
+		}
+		if request.URL.Path != "/api/v1/workspaces/11111111-1111-4111-8111-111111111111/work" {
+			t.Errorf("unexpected request %s", request.URL)
+		}
+		io.WriteString(response, `{"data":[{"id":"22222222-2222-4222-8222-222222222222","workspace_id":"11111111-1111-4111-8111-111111111111","project_id":"33333333-3333-4333-8333-333333333333","code":"PRO-123","title":"Ship the slice","revision":"1"}],"next_cursor":null}`)
 	}))
 	defer server.Close()
 	t.Setenv("ASSIGN_TOKEN", "apt_test")

@@ -1,5 +1,11 @@
 # Assign CLI
 
+Resource commands use the shared `/api/v1` API. Project keys, Document paths and
+Milestone codes resolve inside the credential's Workspace before immutable
+resource IDs are used. Browser commands use the server's `web_url`; a Project's
+external website is never an Assign navigation target. A missing or invalid
+navigation URL is reported without guessing a host.
+
 ## Install
 
 Homebrew is available for macOS and Linux:

@@ -85,8 +85,19 @@ func runMilestoneTaskPage(ctx context.Context, output, diagnostics io.Writer, op
 	if err != nil {
 		return err
 	}
-	var scope cliMilestone
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/milestones/"+url.PathEscape(code), nil, &scope); err != nil {
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
+	transport, err := newOperationTransport(ctx, opts, client)
+	if err != nil {
+		return err
+	}
+	defer transport.client.CloseIdleConnections()
+	workspace, err := resourceWorkspace(ctx, transport, "")
+	if err != nil {
+		return err
+	}
+	scope, err := milestoneResource(ctx, transport, workspace, code)
+	if err != nil {
 		return err
 	}
 	parts := milestoneCodePattern.FindStringSubmatch(code)
@@ -98,8 +109,12 @@ func runMilestoneTaskPage(ctx context.Context, output, diagnostics io.Writer, op
 		query.Set("cursor", options.cursor)
 	}
 	var page milestoneTaskQueryPage
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/workspaces/"+url.PathEscape(scope.WorkspaceID)+"/tasks?"+query.Encode(), nil, &page); err != nil {
+	data, _, err := taskResourceExchange(ctx, transport, http.MethodGet, "/api/v1/workspaces/"+url.PathEscape(scope.WorkspaceID)+"/tasks?"+query.Encode(), "", "", http.StatusOK)
+	if err != nil {
 		return err
+	}
+	if err = json.Unmarshal(data, &page); err != nil {
+		return newExitError(ExitOperation, "Milestone Task page is incomplete")
 	}
 	if err := page.validate(scope, parts[1], options); err != nil {
 		return err
@@ -216,4 +231,42 @@ func (page milestoneTaskQueryPage) validate(scope cliMilestone, projectKey strin
 
 func validMilestoneTaskSelection(item milestoneTaskQueryItem, scope cliMilestone, projectKey string) bool {
 	return validMilestoneScopeID(item.ID) && validMilestoneScopeID(item.StatusID) && item.WorkspaceID == scope.WorkspaceID && item.ProjectID == scope.ProjectID && item.MilestoneID != nil && *item.MilestoneID == scope.ID && item.Title != "" && item.Priority != "" && item.Revision > 0 && item.TaskNumber != nil && *item.TaskNumber > 0 && item.Code == projectKey+"-"+strconv.FormatInt(*item.TaskNumber, 10) && item.Lifecycle == "active" && item.ArchivedAt == nil && item.TrashedAt == nil
+}
+
+// Canonical resource decimals stay lexical until checked signed-64-bit parsing.
+// No floating-point representation participates in selection or output.
+func (item *milestoneTaskQueryItem) UnmarshalJSON(data []byte) error {
+	type alias milestoneTaskQueryItem
+	var value struct {
+		*alias
+		Revision json.RawMessage `json:"revision"`
+		Number   json.RawMessage `json:"task_number"`
+	}
+	value.alias = (*alias)(item)
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	parse := func(raw json.RawMessage) (int64, error) {
+		text := string(raw)
+		if len(text) > 0 && text[0] == '"' {
+			if err := json.Unmarshal(raw, &text); err != nil {
+				return 0, err
+			}
+		}
+		if !canonicalPositiveDecimal(text) {
+			return 0, newExitError(ExitOperation, "Task decimal is invalid")
+		}
+		return strconv.ParseInt(text, 10, 64)
+	}
+	revision, err := parse(value.Revision)
+	if err != nil {
+		return err
+	}
+	number, err := parse(value.Number)
+	if err != nil {
+		return err
+	}
+	item.Revision = revision
+	item.TaskNumber = &number
+	return nil
 }
