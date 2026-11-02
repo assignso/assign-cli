@@ -193,7 +193,7 @@ func documentMarkdown(ctx context.Context, transport *operationTransport, id str
 	r.Header.Set("Authorization", "Bearer "+transport.token)
 	r.Header.Set("Accept", "text/markdown")
 	r.Header.Set("Accept-Encoding", "identity")
-	response, err := transport.client.Do(r)
+	response, err := transport.canonicalExchange(r)
 	if err != nil {
 		return "", false, newExitError(ExitOperation, "Document content read failed")
 	}

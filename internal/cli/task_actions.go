@@ -132,7 +132,7 @@ func taskActionExchange(ctx context.Context, transport *operationTransport, meth
 		request.Header.Set("Idempotency-Key", key)
 		request.Header.Set("If-Match", condition)
 	}
-	response, err := transport.client.Do(request)
+	response, err := transport.canonicalExchange(request)
 	if err != nil {
 		if method == http.MethodPost {
 			return nil, nil, uncertain()

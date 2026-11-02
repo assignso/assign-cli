@@ -15,7 +15,7 @@ import (
 )
 
 // One command owns its credential, deadline, continuation and original mutation.
-// No resource request follows redirects, retries, or changes the credential.
+// Reads share bounded recovery; no request follows redirects or changes credentials.
 func taskResourceExchange(ctx context.Context, transport *operationTransport, method, path, body, key string, status int) ([]byte, http.Header, error) {
 	uncertain := func() error {
 		return newExitError(ExitOperation, "Comment outcome is uncertain; retain the original host, credential, Workspace, Task ID, key and identical input; do not issue a replacement command")
@@ -34,7 +34,7 @@ func taskResourceExchange(ctx context.Context, transport *operationTransport, me
 	if key != "" {
 		req.Header.Set("Idempotency-Key", key)
 	}
-	response, err := transport.client.Do(req)
+	response, err := transport.canonicalExchange(req)
 	if err != nil {
 		if method == http.MethodPost {
 			return nil, nil, uncertain()

@@ -94,7 +94,7 @@ func taskCreateExchange(ctx context.Context, transport *operationTransport, meth
 	if key != "" {
 		req.Header.Set("Idempotency-Key", key)
 	}
-	response, err := transport.client.Do(req)
+	response, err := transport.canonicalExchange(req)
 	if err != nil {
 		if method == http.MethodPost {
 			return nil, nil, fmt.Errorf("%w: %v", uncertain(), err)

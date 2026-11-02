@@ -357,7 +357,7 @@ func runSearch(ctx context.Context, output io.Writer, rawHost string, client *ht
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Accept-Encoding", "identity")
 	request.Header.Set("Authorization", "Bearer "+transport.token)
-	response, err := transport.client.Do(request)
+	response, err := transport.canonicalExchange(request)
 	if err != nil {
 		return newExitError(ExitOperation, "request search: %v", err)
 	}
