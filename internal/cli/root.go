@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -234,12 +235,9 @@ func runTaskShow(ctx context.Context, output io.Writer, opts *options, client *h
 	if code == "" {
 		return newExitError(ExitArguments, "Task code must not be empty")
 	}
-	var item cliTask
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/cli/tasks/"+url.PathEscape(code), nil, &item); err != nil {
-		return err
-	}
-	if item.Code == "" || item.Title == "" || item.ProjectCode == "" || item.StatusCategory == "" || item.Revision < 1 || item.URL == "" {
-		return newExitError(ExitOperation, "Task response is incomplete")
+	item, readErr := readResourceTaskShow(ctx, opts, client, code)
+	if readErr != nil {
+		return readErr
 	}
 	var err error
 	switch field {
@@ -333,7 +331,7 @@ func newIdempotencyKey() (string, error) {
 func newSearchCommand(opts *options, client *http.Client) *cobra.Command {
 	return &cobra.Command{
 		Use:   "search <query>",
-		Short: "Search Tasks and Documents in the token Workspace",
+		Short: "Search content in the token Workspace",
 		Args:  exactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			return runSearch(command.Context(), command.OutOrStdout(), opts.host, client, opts.credentials, args[0])
@@ -341,10 +339,13 @@ func newSearchCommand(opts *options, client *http.Client) *cobra.Command {
 	}
 }
 
+// Canonical SearchResultList: keep identifiers separate from immutable IDs.
+// People and other matches without a display identifier use their resource ID.
 type cliSearchResponse struct {
 	Items []struct {
 		ResourceType string `json:"resource_type"`
-		Code         string `json:"code"`
+		ResourceID   string `json:"resource_id"`
+		Identifier   string `json:"identifier"`
 		Title        string `json:"title"`
 	} `json:"items"`
 	NextCursor *string `json:"next_cursor"`
@@ -352,22 +353,26 @@ type cliSearchResponse struct {
 }
 
 func runSearch(ctx context.Context, output io.Writer, rawHost string, client *http.Client, store credentialStore, query string) error {
-	host, err := validatedHost(rawHost)
-	if err != nil {
-		return newExitError(ExitArguments, "%s", err)
-	}
-	token, err := authorizationToken(ctx, host, client, store)
+	transport, err := newOperationTransport(ctx, &options{host: rawHost, credentials: store}, client)
 	if err != nil {
 		return err
 	}
-	endpoint := host + "/api/v1/cli/search?q=" + url.QueryEscape(query)
+	workspace, err := resourceWorkspace(ctx, transport, "")
+	if err != nil {
+		return err
+	}
+	// Keep the existing single page of up to 50 results, with no resource-type
+	// filter or client-side ranking. The canonical service owns query bounds.
+	values := url.Values{"q": {query}, "limit": {"50"}}
+	endpoint := transport.host + "/api/v1/workspaces/" + workspace.ID + "/search?" + values.Encode()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return newExitError(ExitOperation, "prepare search request")
 	}
 	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Authorization", "Bearer "+token)
-	response, err := client.Do(request)
+	request.Header.Set("Accept-Encoding", "identity")
+	request.Header.Set("Authorization", "Bearer "+transport.token)
+	response, err := transport.client.Do(request)
 	if err != nil {
 		return newExitError(ExitOperation, "request search: %v", err)
 	}
@@ -375,19 +380,32 @@ func runSearch(ctx context.Context, output io.Writer, rawHost string, client *ht
 	if response.StatusCode != http.StatusOK {
 		return productReadError(response, "search")
 	}
+	const maxSearchResponseBytes = 2 * 1024 * 1024
+	media, _, mediaErr := mime.ParseMediaType(response.Header.Get("Content-Type"))
+	encoding := response.Header.Get("Content-Encoding")
+	data, readErr := io.ReadAll(io.LimitReader(response.Body, maxSearchResponseBytes+1))
+	if mediaErr != nil || media != "application/json" || (encoding != "" && encoding != "identity") || readErr != nil || len(data) > maxSearchResponseBytes {
+		return newExitError(ExitOperation, "search response is incomplete or exceeds its limit")
+	}
 	var page cliSearchResponse
-	decoder := json.NewDecoder(io.LimitReader(response.Body, 2*1024*1024))
-	if err := decoder.Decode(&page); err != nil {
+	if json.Unmarshal(data, &page) != nil || page.Items == nil || len(page.Items) > 50 || page.HasMore != (page.NextCursor != nil) {
 		return newExitError(ExitOperation, "decode search response")
 	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return newExitError(ExitOperation, "decode search response")
+	if page.NextCursor != nil && (*page.NextCursor == "" || len(*page.NextCursor) > 8192 || safeInline(*page.NextCursor) != *page.NextCursor) {
+		return newExitError(ExitOperation, "search continuation is invalid")
 	}
+	// Validate the complete page before writing any result to stdout.
 	for _, item := range page.Items {
-		if item.ResourceType == "" || item.Code == "" || item.Title == "" {
+		if item.ResourceType == "" || !canonicalIdentifier(item.ResourceID) || item.Title == "" {
 			return newExitError(ExitOperation, "search response is incomplete")
 		}
-		if _, err := fmt.Fprintf(output, "%s  %s\n", item.Code, item.Title); err != nil {
+	}
+	for _, item := range page.Items {
+		identifier := item.Identifier
+		if identifier == "" {
+			identifier = item.ResourceID
+		}
+		if _, err := fmt.Fprintf(output, "%s  %s\n", identifier, item.Title); err != nil {
 			return err
 		}
 	}
