@@ -184,6 +184,8 @@ commands.
 
 ## Develop locally
 
+Run the [TypeScript scaffold checks](command/README.md) from `command/` with `bun run test:local` after installing its locked dependencies. Local tests and compiled builds need no signing certificate.
+
 ```sh
 go test ./...
 go build -o assign .

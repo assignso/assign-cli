@@ -1,0 +1,163 @@
+package cli
+
+import (
+	"bufio"
+	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"fmt"
+	"io"
+	"math/big"
+	"net"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
+	"syscall"
+	"testing"
+	"time"
+)
+
+const fixtureHost = "cli-fixture.invalid"
+const fixtureToken = "apt_cli_fixture_only"
+
+type rewriteRequest struct {
+	Method string `json:"method"`
+	Path   string `json:"path"`
+}
+
+type rewriteFixture struct {
+	Argv       []string
+	BrokenPipe bool
+	Requests   []struct {
+		Method   string
+		Path     string
+		Headers  map[string]string
+		Body     string
+		Status   int
+		Response string
+	}
+}
+
+type brokenFixtureOutput struct{}
+
+func (brokenFixtureOutput) Write([]byte) (int, error) { return 0, syscall.EPIPE }
+
+// Use the real HTTP transport and TLS, connected to a net.Pipe fixture. The
+// test process never opens a socket or resolves the fixture hostname.
+func TestCLIRewriteFixture(t *testing.T) {
+	raw, err := os.ReadFile(os.Getenv("ASSIGN_FIXTURE_CASE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture rewriteFixture
+	if err := json.Unmarshal(raw, &fixture); err != nil || len(fixture.Requests) > 8 {
+		t.Fatal("invalid request fixture")
+	}
+	t.Setenv("ASSIGN_TOKEN", fixtureToken)
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert := &x509.Certificate{SerialNumber: big.NewInt(1), DNSNames: []string{fixtureHost},
+		NotBefore: time.Unix(0, 0), NotAfter: time.Unix(4102444800, 0),
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	der, err := x509.CreateCertificate(rand.Reader, cert, cert, public, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots := x509.NewCertPool()
+	roots.AddCert(parsed)
+	records := []rewriteRequest{}
+	unexpected := false
+	var mu sync.Mutex
+
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12},
+		DialContext: func(_ context.Context, network, address string) (net.Conn, error) {
+			if network != "tcp" || address != fixtureHost+":443" {
+				mu.Lock()
+				unexpected = true
+				mu.Unlock()
+				return nil, fmt.Errorf("unexpected fixture destination")
+			}
+			client, server := net.Pipe()
+			go func() {
+				defer server.Close()
+				_ = server.SetDeadline(time.Now().Add(5 * time.Second))
+				conn := tls.Server(server, &tls.Config{
+					Certificates: []tls.Certificate{{Certificate: [][]byte{der}, PrivateKey: private}},
+					MinVersion:   tls.VersionTLS12,
+				})
+				request, err := http.ReadRequest(bufio.NewReader(conn))
+				if err != nil {
+					return
+				}
+				body, err := io.ReadAll(io.LimitReader(request.Body, 65537))
+				request.Body.Close()
+				mu.Lock()
+				index := len(records)
+				path := request.URL.RequestURI()
+				records = append(records, rewriteRequest{Method: request.Method, Path: path})
+				matches := err == nil && index < len(fixture.Requests)
+				status, content := http.StatusBadRequest, "{}"
+				if matches {
+					expected := fixture.Requests[index]
+					matches = expected.Method == request.Method && expected.Path == path &&
+						request.Header.Get("Authorization") == "Bearer "+fixtureToken &&
+						expected.Body == string(body)
+					for name, value := range expected.Headers {
+						matches = matches && request.Header.Get(name) == value
+					}
+					if matches {
+						status, content = expected.Status, expected.Response
+					}
+				}
+				unexpected = unexpected || !matches
+				mu.Unlock()
+				response := &http.Response{StatusCode: status, ProtoMajor: 1, ProtoMinor: 1,
+					Header:        http.Header{"Content-Type": {"application/json"}},
+					ContentLength: int64(len(content)), Close: true,
+					Body: io.NopCloser(strings.NewReader(content))}
+				_ = response.Write(conn)
+			}()
+			return client, nil
+		},
+	}
+	var stdout io.Writer = os.Stdout
+	if fixture.BrokenPipe {
+		stdout = brokenFixtureOutput{}
+	}
+	cmd := newRootCommandWithClient(os.Stdin, stdout, os.Stderr, &http.Client{Transport: transport})
+	args := append([]string{"--host", "https://" + fixtureHost}, fixture.Argv...)
+	cmd.SetArgs(args)
+	_, _, err = cmd.Find(args)
+	code := 0
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "assign: %s\n", err)
+		code = ExitArguments
+	} else if err = cmd.ExecuteContext(context.Background()); err != nil && !isBrokenPipe(err) {
+		fmt.Fprintf(os.Stderr, "assign: %s\n", err)
+		code = exitCode(err)
+	}
+	mu.Lock()
+	if unexpected || len(records) != len(fixture.Requests) {
+		code = 70
+	}
+	trace, err := json.Marshal(records)
+	mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(os.Getenv("ASSIGN_FIXTURE_TRACE"), trace, 0600); err != nil {
+		t.Fatal(err)
+	}
+	os.Exit(code)
+}

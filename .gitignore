@@ -4,3 +4,5 @@
 /terminal/dist/
 /terminal/node_modules/
 coverage.out
+/command/node_modules/
+/command/dist/
