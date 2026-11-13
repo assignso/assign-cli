@@ -192,7 +192,8 @@ fixtureTest("aborts the tracked setup process before execution", async () => {
   let launched = false;
   const outcome = withExternalWorkerEnvironment(selected, { ...profile, setup: { path: "setup.sh", args: ["wait"] } },
     async () => { launched = true; }, controller.signal);
-  const rejection = expect(outcome).rejects.toThrow("interrupted during setup");
+  // Observe early rejection while waiting to send the abort.
+  void outcome.catch(() => {});
   try {
     for (let attempt = 0; attempt < 200; attempt++) {
       const receipt = await record(selected).catch(() => undefined);
@@ -202,7 +203,7 @@ fixtureTest("aborts the tracked setup process before execution", async () => {
     expect((await record(selected)).setupPID).toBeNumber();
   } finally {
     controller.abort();
-    await rejection;
+    await expect(outcome).rejects.toThrow("interrupted during setup");
   }
   const evidence = await record(selected);
   expect(launched).toBe(false);
