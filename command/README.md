@@ -318,3 +318,23 @@ from this directory to refresh the projection from the workspace. Use
 `check-source worker-task-claims` and `check worker-task-claims` modes check
 the source and binding. The prepared `fixtures/worker-task-claims.test.ts`
 selector runs in CW-07.
+
+### Private external worker selection
+
+The foreground supervisor calls `createExternalWorkerSelection` after
+confirming the enrolled device connection and acquiring its local run slot.
+Provide the supervisor's durable intent journal. Clear a claim intent only
+after definite refusal or completed run reconciliation. A claimed selection
+carries the current receipt for preparation. On a reconciliation-required
+result, resolve the original saved intent and any native process state before
+launch or further selection. Use the returned idle delay between passes.
+
+The private `evidence` operation accepts an allowed status event and the
+current run fence. A blocked event requires a bounded reason code. Persist
+its exact input before dispatch and use the matching receipt operation after
+uncertainty. Keep its token, workspace
+binding and local process information in the supervisor. Core records only
+worker/run references and the bounded event in the Task comment.
+
+The prepared selection selector is `bun test fixtures/worker-selection.test.ts`
+in the CW-07 batch.

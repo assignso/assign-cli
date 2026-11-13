@@ -49,7 +49,7 @@ test("maps refusal and interruption, and treats missing or malformed receipts as
   for (const [status, exitCode] of [[400, 2], [401, 3], [403, 3], [409, 5], [503, 1]]) {
     const client = operations(async () => new Response(null, { status }));
     await expect(client.claim.apply(input)).rejects.toMatchObject({
-      operationID: id(8), uncertain: status === 503, status, exitCode,
+      operationID: id(8), uncertain: status === 503 || status === 409, status, exitCode,
     });
   }
   const missing = operations(async () => new Response(null, { status: 404 }));
@@ -90,4 +90,34 @@ test("uses the correct bearer for finalization and its historical receipt", asyn
   }, "wrun_at_fixture");
   await expect(wrongAudience.claim.apply(input)).rejects.toMatchObject({ operationID: id(8), exitCode: 1 });
   expect(dispatched).toBe(false);
+});
+
+test("posts Task evidence with a run credential and looks up the same intent with the device credential", async () => {
+  const seen: string[] = [];
+  const evidence = {
+    ...subject,
+    body: {
+      task_id: input.body.task_id, delegation_id: input.body.delegation_id,
+      run_id: input.body.run_id, operation_id: input.body.operation_id,
+      expected_revision: receipt.revision, generation: receipt.generation,
+      token: receipt.token!, event: "verification-passed" as const,
+    },
+  };
+  const client = createWorkerTaskOperations({
+    origin,
+    workerDeviceToken: async () => "wdev_at_fixture",
+    workerRunToken: async () => "wrun_at_fixture",
+    fetchApi: async (url, init) => {
+      seen.push(new URL(String(url)).pathname.split("/").at(-1)!);
+      const reconciling = seen.at(-1) === "evidence-receipt";
+      expect(new Headers(init?.headers).get("Authorization")).toBe(
+        reconciling ? "Bearer wdev_at_fixture" : "Bearer wrun_at_fixture",
+      );
+      expect(JSON.parse(String(init?.body))).toEqual(evidence.body);
+      return Response.json({ ...receipt, current: false });
+    },
+  });
+  expect(await client.evidence.apply(evidence)).toEqual({ ...receipt, current: false });
+  expect(await client.evidence.reconcile(evidence)).toEqual({ ...receipt, current: false });
+  expect(seen).toEqual(["evidence", "evidence-receipt"]);
 });

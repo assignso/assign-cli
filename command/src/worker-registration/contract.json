@@ -1,7 +1,7 @@
 {
   "audience": "private-cli",
   "sources": {
-    "assign-core/contracts/api/src/paths/worker-catalog.v1.json": "f54e80f62086a5ed8184f2c349c6f4fa73c598a058172a9c331cd57c01cc0c5b",
+    "assign-core/contracts/api/src/paths/worker-catalog.v1.json": "8a4161d300af5a9c47eb0428f5fb0eff45611eaf50c0ecdd38c73a2e1a40f8e8",
     "assign-core/internal/cliauth/service.go": "2f7754f1baa8e2b70c7d0567bea87b1ec11515664c12ed685c842a091bbb1f72",
     "assign-core/internal/httpapi/worker_catalog.go": "44aa8fb4ea761c38e6ca0d088ae6908351523ce9965b2f80f5ed0f264c0b1a74",
     "assign-core/contracts/api/src/components/shared.yaml": "8c067491c8ca250fab4838030420c7fb5ba62c90b66d70a657c6bd20b65041ac",

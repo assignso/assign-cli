@@ -4,8 +4,8 @@ import type { WorkerTransport } from "../worker-registration/request.ts";
 
 export const workerTaskClaimsIdentity = {
   audience: "private-cli",
-  projectionSHA256: "9215d360da551b30068eb8db1d4522c0f4127eee8a9ad5c8e5718a5e6a863713",
-  generatorSHA256: "39c4e9ccfbb448604dfb4e076e5b4852fd7414edfe60f4dd2ae0125daf544d72",
+  projectionSHA256: "f3591ce20a69a62df75fd4bd6494953f7a22abea6255c953d5ba4d13e57e9974",
+  generatorSHA256: "8ee509abc7fea119292ad29845f804395bdf446f33c1c891f4d2c5ee85fc1b0f",
 } as const;
 
 export type WorkerTaskClaimInputV1 = {
@@ -273,6 +273,34 @@ export type WorkerTaskRunCredentialMetadataV1 = {
   credential_id: string;
   expires_at: string;
 };
+export type WorkerTaskEvidenceInputV1 = {
+  task_id: string;
+  delegation_id: string;
+  run_id: string;
+  operation_id: string;
+  expected_revision: string;
+  generation: string;
+  token: string;
+  event: "started" | "progress" | "blocked" | "verification-passed" | "verification-failed";
+  blocked_reason?: "needs-input" | "permission" | "environment" | "dependency" | "limit" | "verification";
+};
+export type CLIWorkerReadyDelegationsV1 = {
+  data: Array<CLIWorkerReadyDelegationV1>;
+  next_cursor: string | null;
+  active_task_ids: Array<string>;
+};
+export type CLIWorkerReadyDelegationV1 = {
+  id: string;
+  worker_id: string;
+  task_id: string;
+  project_id: string;
+  task_revision: string;
+  saved_revision: string;
+  applied_revision: string;
+  assign_to_self: boolean;
+  revision: string;
+  state: "queued";
+};
 
 export interface WorkerTaskClaimsSuccess {
   claimWorkerTask: WorkerTaskClaimReceiptV1;
@@ -289,6 +317,9 @@ export interface WorkerTaskClaimsSuccess {
   readWorkerTaskReconcileReceipt: WorkerTaskClaimReceiptV1;
   issueWorkerTaskRunCredential: WorkerTaskRunCredentialV1;
   readWorkerTaskRunCredential: WorkerTaskRunCredentialMetadataV1;
+  recordWorkerTaskEvidence: WorkerTaskClaimReceiptV1;
+  readWorkerTaskEvidenceReceipt: WorkerTaskClaimReceiptV1;
+  listCLIWorkerReadyDelegations: CLIWorkerReadyDelegationsV1;
 }
 
 export interface WorkerTaskClaimsProblems {
@@ -502,6 +533,49 @@ export interface WorkerTaskClaimsProblems {
     503: ErrorResponse;
     504: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
   };
+  recordWorkerTaskEvidence: {
+    400: ErrorResponse;
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+    406: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    409: ErrorResponse;
+    413: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    415: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    422: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    429: ErrorResponse;
+    500: ErrorResponse;
+    503: ErrorResponse;
+    504: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+  };
+  readWorkerTaskEvidenceReceipt: {
+    400: ErrorResponse;
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+    406: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    409: ErrorResponse;
+    413: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    415: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    422: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    429: ErrorResponse;
+    500: ErrorResponse;
+    503: ErrorResponse;
+    504: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+  };
+  listCLIWorkerReadyDelegations: {
+    400: ProblemDetails;
+    401: ProblemDetails;
+    403: ProblemDetails;
+    406: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    409: ProblemDetails;
+    413: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    415: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    422: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+    500: ErrorResponse;
+    503: ErrorResponse;
+    504: (MalformedRequestProblem) | (UnauthenticatedProblem) | (PaymentRequiredProblem) | (ForbiddenProblem) | (NotFoundProblem) | (MethodNotAllowedProblem) | (NotAcceptableProblem) | (ConflictProblem) | (IdempotencyKeyConflictProblem) | (OperationInProgressProblem) | (GoneProblem) | (PreconditionFailedProblem) | (ContentTooLargeProblem) | (UnsupportedMediaTypeProblem) | (ValidationFailedProblem) | (LockedProblem) | (PreconditionRequiredProblem) | (RateLimitedProblem) | (InternalErrorProblem) | (NotImplementedProblem) | (BadGatewayProblem) | (ServiceUnavailableProblem) | (GatewayTimeoutProblem);
+  };
 }
 
 export type WorkerTaskClaimTransport = Omit<WorkerTransport, "accessToken"> & {
@@ -565,6 +639,22 @@ export function createWorkerTaskClaimsClient(transport: WorkerTaskClaimTransport
     },
     readWorkerTaskRunCredential(input: { workspace_id: string; owner_id: string; device_id: string; worker_id: string; body: WorkerTaskRunSubjectV1 }, signal?: AbortSignal) {
       return workerDeviceToken("POST", `/api/v1/cli/worker-devices/${pathSegment(input.workspace_id)}/${pathSegment(input.owner_id)}/${pathSegment(input.device_id)}/${pathSegment(input.worker_id)}/task-claims/run-credential-receipt`, signal, { body: input.body, maxBytes: 16384 });
+    },
+    recordWorkerTaskEvidence(input: { workspace_id: string; owner_id: string; device_id: string; worker_id: string; body: WorkerTaskEvidenceInputV1 }, signal?: AbortSignal) {
+      return workerRunToken("POST", `/api/v1/cli/worker-devices/${pathSegment(input.workspace_id)}/${pathSegment(input.owner_id)}/${pathSegment(input.device_id)}/${pathSegment(input.worker_id)}/task-claims/evidence`, signal, { body: input.body, maxBytes: 16384 });
+    },
+    readWorkerTaskEvidenceReceipt(input: { workspace_id: string; owner_id: string; device_id: string; worker_id: string; body: WorkerTaskEvidenceInputV1 }, signal?: AbortSignal) {
+      return workerDeviceToken("POST", `/api/v1/cli/worker-devices/${pathSegment(input.workspace_id)}/${pathSegment(input.owner_id)}/${pathSegment(input.device_id)}/${pathSegment(input.worker_id)}/task-claims/evidence-receipt`, signal, { body: input.body, maxBytes: 16384 });
+    },
+    listCLIWorkerReadyDelegations(input: { workspace_id: string; owner_id: string; device_id: string; worker_id: string; epoch: string; connection_intent: string; limit?: number; cursor?: string }, signal?: AbortSignal) {
+      if (input.limit !== undefined && (!Number.isInteger(input.limit) ||
+          input.limit < 1 || input.limit > 100)) throw new RangeError("Invalid worker limit");
+      const query = new URLSearchParams();
+      if (input.epoch !== undefined) query.set("epoch", String(input.epoch));
+      if (input.connection_intent !== undefined) query.set("connection_intent", String(input.connection_intent));
+      if (input.limit !== undefined) query.set("limit", String(input.limit));
+      if (input.cursor !== undefined) query.set("cursor", String(input.cursor));
+      return workerDeviceToken("GET", `/api/v1/cli/worker-devices/${pathSegment(input.workspace_id)}/${pathSegment(input.owner_id)}/${pathSegment(input.device_id)}/${pathSegment(input.worker_id)}/ready-delegations`, signal, { query });
     },
   };
 }

@@ -4,8 +4,8 @@ import type { WorkerTransport } from "./request.ts";
 
 export const workerRegistrationIdentity = {
   audience: "private-cli",
-  projectionSHA256: "f904c8706fd69371b90b02935dd88b548f3e86e639eceebcca7d89308689bbec",
-  generatorSHA256: "39c4e9ccfbb448604dfb4e076e5b4852fd7414edfe60f4dd2ae0125daf544d72",
+  projectionSHA256: "468c8acc933a7e8421675fd1a6c9e963348639a5b461d273bce0bcaa63531701",
+  generatorSHA256: "8ee509abc7fea119292ad29845f804395bdf446f33c1c891f4d2c5ee85fc1b0f",
 } as const;
 
 export type CLIWorkerCatalogItemV1 = {

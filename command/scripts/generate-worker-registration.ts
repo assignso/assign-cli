@@ -16,12 +16,15 @@ const registrationOperations = [
   "updateCLIWorkerPolicy",
 ];
 
+const readyOperation = "listCLIWorkerReadyDelegations";
 const claimCredentials = {
   claimWorkerTask: "workerDeviceToken",
   readWorkerTaskClaimReceipt: "workerDeviceToken",
   renewWorkerTask: "workerDeviceToken",
   readWorkerTaskRenewReceipt: "workerDeviceToken",
   releaseWorkerTask: "workerRunToken",
+  recordWorkerTaskEvidence: "workerRunToken",
+  readWorkerTaskEvidenceReceipt: "workerDeviceToken",
   readWorkerTaskReleaseReceipt: "workerDeviceToken",
   finalizeWorkerTask: "workerRunToken",
   readWorkerTaskFinalizeReceipt: "workerDeviceToken",
@@ -32,7 +35,7 @@ const claimCredentials = {
   issueWorkerTaskRunCredential: "workerDeviceToken",
   readWorkerTaskRunCredential: "workerDeviceToken",
 } as const;
-const operations = claims ? Object.keys(claimCredentials) : registrationOperations;
+const operations = claims ? [...Object.keys(claimCredentials), readyOperation] : registrationOperations;
 const authorities = {
   developerAccessToken: "cli_oauth_grant",
   workerDeviceToken: "registered_worker_device",
@@ -88,6 +91,16 @@ function verifyOperations(paths: Projection["paths"]) {
   const selected = rows(paths).map(({ operation }) => operation.operationId).sort();
   if (json(selected) !== json([...operations].sort())) throw new Error("Worker operation allowlist differs");
   for (const { path, operation, method } of rows(paths)) {
+    if (claims && operation.operationId === readyOperation) {
+      if (path !== "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/ready-delegations" ||
+          method !== "get" || operation.requestBody ||
+          json(operation.security) !== json([{ workerDeviceBearerV1: [] }]) ||
+          json(operation["x-assign-authority"].credentials) !== json(["worker_device_credential"]) ||
+          operation["x-assign-authority"].client_selects_owner !== false) {
+        throw new Error("Worker ready feed authority differs");
+      }
+      continue;
+    }
     if (claims) {
       const family = claimCredentials[operation.operationId as keyof typeof claimCredentials];
       const prefix = "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/task-claims/";
@@ -130,9 +143,13 @@ function project(): Projection {
   if (claims && (!devicePrefix || !runPrefix)) throw new Error("Missing Core worker credential family");
 
   const paths: Projection["paths"] = {};
-  for (const { path, method, operation } of rows(source.paths ?? {})) {
+  const readySource = claims ? JSON.parse(read("assign-core/contracts/api/src/paths/worker-catalog.v1.json")) as Fragment : undefined;
+  if (claims && !read("assign-core/internal/httpapi/worker_connections.go").includes('r.Get(workerDevicePath+"/ready-delegations", routes.ready)')) {
+    throw new Error("Missing Core ready feed route");
+  }
+  for (const { path, method, operation } of rows({ ...source.paths, ...readySource?.paths })) {
     if (!operations.includes(operation.operationId)) continue;
-    if (claims) {
+    if (claims && operation.operationId !== readyOperation) {
       const action = path.split("/").at(-1);
       if (!(catalog.includes(`"${action}"`) || catalog.includes(`"/${action}"`)) || !catalog.includes("decodeJSONBody(r, 16*1024, true,")) {
         throw new Error(`Missing Core claim route or body limit for ${operation.operationId}`);
@@ -149,6 +166,7 @@ function project(): Projection {
   verifyOperations(paths);
 
   const pool = structuredClone(source.components ?? {});
+  if (readySource) Object.assign(pool.schemas ??= {}, readySource.components?.schemas);
   for (const path of [
     "assign-core/contracts/api/src/components/shared.yaml",
     ...["comments", "contract", "errors", "problems", "shared"].map(name => `openapi-spec/src/components/${name}.yaml`),
@@ -327,7 +345,8 @@ function generate(projection: Projection): string {
       }
     }
     if (body && !Number.isSafeInteger(body["x-assign-max-bytes"])) throw new Error("Missing canonical body limit");
-    const request = claims ? Object.keys(operation.security[0]!)[0] as Credential : "request";
+    const request = operation.operationId === readyOperation ? "workerDeviceToken" :
+      claims ? Object.keys(operation.security[0]!)[0] as Credential : "request";
     lines.push(`      return ${request}("${method.toUpperCase()}", \`${url}\`, signal${query.length ? ", { query }" :
       body ? `, { body: input.body, maxBytes: ${body["x-assign-max-bytes"]} }` : ""});`, "    },");
   }

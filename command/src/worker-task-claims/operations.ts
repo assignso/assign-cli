@@ -6,9 +6,9 @@ import {
   type WorkerTaskClaimTransport,
 } from "./index.ts";
 
-const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-const sameID = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
-const exactPositiveDecimal = (value: unknown): value is string =>
+export const workerUUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+export const sameID = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+export const exactPositiveDecimal = (value: unknown): value is string =>
   typeof value === "string" && /^[1-9][0-9]{0,18}$/.test(value) && BigInt(value) <= 9223372036854775807n;
 
 export class WorkerTaskOperationFailure extends CommandFailure {
@@ -39,9 +39,9 @@ async function readReceipt(
       typeof row.task_id !== "string" || !sameID(row.task_id, body.task_id) ||
       typeof row.operation_id !== "string" || !sameID(row.operation_id, body.operation_id) ||
       typeof row.run_id !== "string" || !sameID(row.run_id, replacementRun ?? body.run_id) ||
-      typeof row.delegation_id !== "string" || !uuid.test(row.delegation_id) ||
+      typeof row.delegation_id !== "string" || !workerUUID.test(row.delegation_id) ||
       (replacementRun ? sameID(row.delegation_id, body.delegation_id) : !sameID(row.delegation_id, body.delegation_id)) ||
-      (row.state === "active" ? typeof row.token !== "string" || !uuid.test(row.token) : row.token !== undefined) ||
+      (row.state === "active" ? typeof row.token !== "string" || !workerUUID.test(row.token) : row.token !== undefined) ||
       !exactPositiveDecimal(row.generation) || !exactPositiveDecimal(row.revision) ||
       typeof row.expires_at !== "string" || !Number.isFinite(Date.parse(row.expires_at)) ||
       (row.state !== "active" && row.state !== "released") ||
@@ -64,7 +64,7 @@ function operation<Input extends OperationInput>(
     // Callers persist this exact intent before invoking apply. Receipt lookup
     // may be used after a restart with the same persisted payload.
     const id = input.body.operation_id;
-    if (!uuid.test(id) || id === "00000000-0000-0000-0000-000000000000") {
+    if (!workerUUID.test(id) || id === "00000000-0000-0000-0000-000000000000") {
       throw new WorkerTaskOperationFailure(id, reconcile, 2);
     }
 
@@ -75,9 +75,19 @@ function operation<Input extends OperationInput>(
       throw new WorkerTaskOperationFailure(id, true, signal?.aborted ? 130 : 1);
     }
     if (!response.ok) {
-      void response.body?.cancel().catch(() => {});
       const status = response.status;
-      const uncertain = reconcile || status >= 500 || status === 408 || status === 429;
+      let conflict = false;
+      if (!reconcile && status === 409) {
+        try {
+          const problem = await decodeResponse(new Response(response.body), 16 * 1024) as { reason?: string } | null;
+          conflict = problem?.reason === "worker_claim_conflict";
+        } catch {
+          // A generic 409 is not a confirmed refusal by the claim owner.
+        }
+      } else {
+        void response.body?.cancel().catch(() => {});
+      }
+      const uncertain = reconcile || status >= 500 || status === 408 || status === 429 || (status === 409 && !conflict);
       throw new WorkerTaskOperationFailure(id, uncertain, responseFailure(status).exitCode, status);
     }
     try {
@@ -100,6 +110,7 @@ export function createWorkerTaskOperations(transport: WorkerTaskClaimTransport) 
     claim: operation(client.claimWorkerTask, client.readWorkerTaskClaimReceipt),
     renew: operation(client.renewWorkerTask, client.readWorkerTaskRenewReceipt),
     release: operation(client.releaseWorkerTask, client.readWorkerTaskReleaseReceipt),
+    evidence: operation(client.recordWorkerTaskEvidence, client.readWorkerTaskEvidenceReceipt),
     finalize: operation(client.finalizeWorkerTask, client.readWorkerTaskFinalizeReceipt),
     recover: operation(client.recoverWorkerTask, client.readWorkerTaskRecoverReceipt, input => input.body.new_run_id),
     reconcile: operation(client.reconcileWorkerTask, client.readWorkerTaskReconcileReceipt),
