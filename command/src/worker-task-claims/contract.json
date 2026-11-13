@@ -1,12 +1,14 @@
 {
   "audience": "private-cli",
   "sources": {
-    "assign-core/contracts/api/src/paths/worker-task-claims.v1.json": "9f2e8705929a83ae3ec7ec078cabcee6ceb4d7224ac1738b343fef666a160035",
+    "assign-core/contracts/api/src/paths/worker-task-claims.v1.json": "195bb263c0b196b80668a5f9f5ce6743a4d9b0c92aeab82e66802afef0823b29",
     "assign-core/internal/cliauth/service.go": "2f7754f1baa8e2b70c7d0567bea87b1ec11515664c12ed685c842a091bbb1f72",
-    "assign-core/internal/httpapi/worker_task_claims.go": "ca37fb625c14a3bfa9dbac12cc09ee22a7762af1aef44b52a5de0a8ee44b4c46",
+    "assign-core/internal/httpapi/worker_task_claims.go": "8b1dacdaaa0b550f140b0017e1ed2b3a7f34f086a839fd1fba9da05b0b2fb697",
     "assign-core/internal/mcpauth/worker_credentials.go": "ebf7e628939417a63965b0ea6f387cd901ec471a66142786d1d7e76b810844e0",
-    "assign-core/contracts/api/src/paths/worker-catalog.v1.json": "8a4161d300af5a9c47eb0428f5fb0eff45611eaf50c0ecdd38c73a2e1a40f8e8",
+    "assign-core/contracts/api/src/paths/worker-catalog.v1.json": "d68e68b9e089f5ef83207a05b22c38605bf746ddff7fff6c20f1b5a53392ee0c",
+    "assign-core/internal/httpapi/worker_catalog.go": "c82f646e9830d90e1f723a3cb3d8bcca52d0720a416a5db4e36d4c63a00e8282",
     "assign-core/internal/httpapi/worker_connections.go": "1771060371f41e68691e9b3865402d0a9a999248926747d8a17519b639758ce2",
+    "assign-core/internal/httpapi/worker_delegations.go": "43b436f8fb8235e94c8bf28fe9f6bf84ca715481a88b231f074888f9c43fd852",
     "assign-core/contracts/api/src/components/shared.yaml": "8c067491c8ca250fab4838030420c7fb5ba62c90b66d70a657c6bd20b65041ac",
     "openapi-spec/src/components/comments.yaml": "48fe38a850b0426863f43fbed79b02847c1ffe3e1002d52f5f7fa3eaa53a1028",
     "openapi-spec/src/components/contract.yaml": "fb3db0fdcf3d0a6b85b468dfe3d1aaa6c14efa8454e23f8af755ddc182b9076d",
@@ -780,7 +782,7 @@
       "post": {
         "operationId": "finalizeWorkerTask",
         "summary": "Submit the verified Task through the canonical completion policy.",
-        "description": "Persist the operation ID and exact input before dispatch. Reconcile an uncertain outcome with the matching receipt operation. Private registered-worker v1 protocol.",
+        "description": "Requires the live claim and admitted result and passing verification receipts for the same run, generation and expected Task revision. The verification flag expresses intent. Persist the operation ID and exact input before dispatch and reconcile an uncertain outcome using the matching receipt operation.",
         "security": [
           {
             "workerRunToken": []
@@ -2036,6 +2038,1288 @@
         }
       }
     },
+    "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/task-claims/result": {
+      "post": {
+        "operationId": "recordWorkerTaskResult",
+        "summary": "Admit typed result readiness for the live run and exact Task revision.",
+        "description": "Requires the run result scope and effective artifact permission. The original operation ID is the receipt identity. This command records readiness without transitioning the Task. Native output, paths and exit codes are outside this schema.",
+        "security": [
+          {
+            "workerRunToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "registered_worker_run"
+          ],
+          "required_scope": "result",
+          "client_selects_owner": false,
+          "binding": "The explicit subject must match the current Core-authorized credential and Task/run binding."
+        },
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "owner_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "x-assign-max-bytes": 16384,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkerTaskReleaseInputV1"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Original committed receipt and currentness, private to the bound caller.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerTaskClaimReceiptV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        }
+      }
+    },
+    "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/task-claims/result-receipt": {
+      "post": {
+        "operationId": "readWorkerTaskResultReceipt",
+        "summary": "Read the original result readiness receipt without applying the operation.",
+        "description": "Send the original operation ID and input. A missing receipt does not establish that the operation never committed. Private registered-worker v1 protocol.",
+        "security": [
+          {
+            "workerDeviceToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "registered_worker_device"
+          ],
+          "required_scope": "receipt:read",
+          "client_selects_owner": false,
+          "binding": "The explicit subject must match the current Core-authorized credential and Task/run binding."
+        },
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "owner_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "x-assign-max-bytes": 16384,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkerTaskReleaseInputV1"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Original committed receipt and currentness, private to the bound caller.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerTaskClaimReceiptV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        }
+      }
+    },
+    "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/connection": {
+      "get": {
+        "operationId": "readCLIWorkerConnection",
+        "summary": "Read the current device epoch and owner-private lease state for reconciliation",
+        "description": "Read the current device epoch and owner-private lease state for reconciliation.",
+        "security": [
+          {
+            "workerDeviceBearerV1": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "worker_device_credential"
+          ],
+          "client_selects_owner": false,
+          "binding": "Exact bearer family and current account, Workspace, device, worker, server and credential epochs. Path selectors never grant authority."
+        },
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "owner_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current private connection receipt.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerConnectionStatusV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        }
+      }
+    },
+    "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/connection/start": {
+      "post": {
+        "operationId": "startCLIWorkerConnection",
+        "summary": "CAS start against the last observed epoch",
+        "description": "CAS start against the last observed epoch. An exact current intent retry does not extend the lease. Concurrent different intents fence the connection and require reconciled credential recovery. Request bodies are capped at 16 KiB. The device shares a durable 60/minute mutation bucket with burst 10.",
+        "security": [
+          {
+            "workerDeviceBearerV1": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "worker_device_credential"
+          ],
+          "client_selects_owner": false,
+          "binding": "Exact bearer family and current account, Workspace, device, worker, server and credential epochs. Path selectors never grant authority."
+        },
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "owner_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current private connection receipt.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerConnectionLeaseV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "409": {
+            "description": "Stale epoch, offline, collision, stale policy, unsupported capability, or local consent required.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "429": {
+            "description": "Device mutation rate exceeded. Retry after one second.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              },
+              "Retry-After": {
+                "description": "Seconds until another attempt is admitted.",
+                "schema": {
+                  "type": "integer",
+                  "const": 1
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CLIWorkerConnectionStartV1"
+              }
+            }
+          },
+          "x-assign-max-bytes": 16384
+        }
+      }
+    },
+    "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/connection/heartbeat": {
+      "post": {
+        "operationId": "heartbeatCLIWorkerConnection",
+        "summary": "Renew only the current bound listener",
+        "description": "Renew only the current bound listener. Send every 30 seconds. The lease expires after 90 seconds or at device credential expiry, whichever is earlier. Request bodies are capped at 16 KiB. The device shares a durable 60/minute mutation bucket with burst 10.",
+        "security": [
+          {
+            "workerDeviceBearerV1": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "worker_device_credential"
+          ],
+          "client_selects_owner": false,
+          "binding": "Exact bearer family and current account, Workspace, device, worker, server and credential epochs. Path selectors never grant authority."
+        },
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "owner_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current private connection receipt.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerConnectionLeaseV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "409": {
+            "description": "Stale epoch, offline, collision, stale policy, unsupported capability, or local consent required.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "429": {
+            "description": "Device mutation rate exceeded. Retry after one second.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              },
+              "Retry-After": {
+                "description": "Seconds until another attempt is admitted.",
+                "schema": {
+                  "type": "integer",
+                  "const": 1
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CLIWorkerConnectionFenceV1"
+              }
+            }
+          },
+          "x-assign-max-bytes": 16384
+        }
+      }
+    },
+    "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/connection/close": {
+      "post": {
+        "operationId": "closeCLIWorkerConnection",
+        "summary": "Expire the current listener lease",
+        "description": "Expire the current listener lease. Claim lease and external process state are independent. Request bodies are capped at 16 KiB. The device shares a durable 60/minute mutation bucket with burst 10.",
+        "security": [
+          {
+            "workerDeviceBearerV1": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "worker_device_credential"
+          ],
+          "client_selects_owner": false,
+          "binding": "Exact bearer family and current account, Workspace, device, worker, server and credential epochs. Path selectors never grant authority."
+        },
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "owner_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current private connection receipt.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerConnectionLeaseV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "409": {
+            "description": "Stale epoch, offline, collision, stale policy, unsupported capability, or local consent required.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "429": {
+            "description": "Device mutation rate exceeded. Retry after one second.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              },
+              "Retry-After": {
+                "description": "Seconds until another attempt is admitted.",
+                "schema": {
+                  "type": "integer",
+                  "const": 1
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CLIWorkerConnectionFenceV1"
+              }
+            }
+          },
+          "x-assign-max-bytes": 16384
+        }
+      }
+    },
+    "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/connection/policy-acknowledgment": {
+      "post": {
+        "operationId": "acknowledgeCLIWorkerPolicy",
+        "summary": "Apply the exact saved revision for this live connection using a matching repository, runner version, verified capability and local consent for expansions",
+        "description": "Apply the exact saved revision for this live connection using a matching repository, runner version, verified capability and local consent for expansions. Request bodies are capped at 16 KiB. The device shares a durable 60/minute mutation bucket with burst 10.",
+        "security": [
+          {
+            "workerDeviceBearerV1": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "worker_device_credential"
+          ],
+          "client_selects_owner": false,
+          "binding": "Exact bearer family and current account, Workspace, device, worker, server and credential epochs. Path selectors never grant authority."
+        },
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "owner_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current private connection receipt.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerPolicyAcknowledgmentReceiptV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "409": {
+            "description": "Stale epoch, offline, collision, stale policy, unsupported capability, or local consent required.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "429": {
+            "description": "Device mutation rate exceeded. Retry after one second.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              },
+              "Retry-After": {
+                "description": "Seconds until another attempt is admitted.",
+                "schema": {
+                  "type": "integer",
+                  "const": 1
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CLIWorkerPolicyAcknowledgmentV1"
+              }
+            }
+          },
+          "x-assign-max-bytes": 16384
+        }
+      }
+    },
+    "/api/v1/cli/workers/{worker_id}/delegations": {
+      "post": {
+        "operationId": "createCLIWorkerDelegation",
+        "summary": "Record an explicit delegation to the authenticated human's own worker.",
+        "description": "Checks canonical Todo, expected Task and worker policy revisions, current Project write access, Task assignment and applied scope. An unassigned Task requires explicit assign-to-self and applied consent. Recording never starts a process or changes the Task. Exact operation replay returns the historical receipt. Reconcile before retrying after the minimum 24-hour receipt window.",
+        "security": [
+          {
+            "developerAccessToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "cli_oauth_grant"
+          ],
+          "required_scope": "assign:write",
+          "client_selects_owner": false,
+          "binding": "Only assign-cli client grants. The locked exact access token determines the current human and Workspace."
+        },
+        "responses": {
+          "200": {
+            "description": "Owner-private worker delegation response.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerDelegationV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "409": {
+            "description": "Delegation, Task or policy revision conflict, active delegation conflict, changed retry payload, or queue limit.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "parameters": [
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CLIWorkerDelegationCreateV1"
+              }
+            }
+          },
+          "x-assign-max-bytes": 16384
+        }
+      }
+    },
+    "/api/v1/cli/workers/{worker_id}/delegations/{delegation_id}": {
+      "get": {
+        "operationId": "readCLIWorkerDelegation",
+        "summary": "Read the current owner-private delegation.",
+        "description": "Requires the authenticated worker owner and current access to the bound Task Project.",
+        "security": [
+          {
+            "developerAccessToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "cli_oauth_grant"
+          ],
+          "required_scope": "assign:read",
+          "client_selects_owner": false,
+          "binding": "Only assign-cli client grants. The locked exact access token determines the current human and Workspace."
+        },
+        "responses": {
+          "200": {
+            "description": "Owner-private worker delegation response.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerDelegationV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "parameters": [
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "delegation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/cli/workers/{worker_id}/delegations/{delegation_id}/cancel": {
+      "post": {
+        "operationId": "cancelCLIWorkerDelegation",
+        "summary": "Cancel an owner-private delegation by expected revision.",
+        "description": "Queued work is canceled. An admitted run becomes cancel_requested and loses effect authority. The result preserves uncertainty about local process termination. Exact operation replay returns the historical receipt.",
+        "security": [
+          {
+            "developerAccessToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "cli_oauth_grant"
+          ],
+          "required_scope": "assign:write",
+          "client_selects_owner": false,
+          "binding": "Only assign-cli client grants. The locked exact access token determines the current human and Workspace."
+        },
+        "responses": {
+          "200": {
+            "description": "Owner-private worker delegation response.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerDelegationV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "409": {
+            "description": "Delegation, Task or policy revision conflict, active delegation conflict, changed retry payload, or queue limit.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "parameters": [
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "delegation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CLIWorkerDelegationCancelV1"
+              }
+            }
+          },
+          "x-assign-max-bytes": 16384
+        }
+      }
+    },
     "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/ready-delegations": {
       "get": {
         "operationId": "listCLIWorkerReadyDelegations",
@@ -2228,6 +3512,202 @@
             "$ref": "#/components/responses/ProductProblem"
           }
         }
+      }
+    },
+    "/api/v1/cli/tasks/{task_id}/worker-runs": {
+      "get": {
+        "operationId": "listCLITaskWorkerRuns",
+        "summary": "Read safe execution references after checking ordinary current Task and Project visibility.",
+        "description": "Read safe execution references after checking ordinary current Task and Project visibility.",
+        "security": [
+          {
+            "developerAccessToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "cli_oauth_grant"
+          ],
+          "required_scope": "assign:read",
+          "client_selects_owner": false,
+          "binding": "Only assign-cli client grants. The locked exact access token determines the current human and Workspace."
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized run observations.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLITaskWorkerRunV1Page"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/cli/workers/{worker_id}/runs": {
+      "get": {
+        "operationId": "listCLIWorkerRuns",
+        "summary": "Inspect runs for an owned worker, including historical references after worker deletion.",
+        "description": "Inspect runs for an owned worker, including historical references after worker deletion. Rechecks current Task and Project access per row. Hidden or absent histories return an empty page. A short or empty page can have a continuation.",
+        "security": [
+          {
+            "developerAccessToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "cli_oauth_grant"
+          ],
+          "required_scope": "assign:read",
+          "client_selects_owner": false,
+          "binding": "Only assign-cli client grants. The locked exact access token determines the current human and Workspace."
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized run observations.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerRunV1Page"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "parameters": [
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     }
   },
@@ -3594,6 +5074,286 @@
           }
         }
       },
+      "CLIWorkerConnectionStatusV1": {
+        "type": "object",
+        "required": [
+          "epoch",
+          "state"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "online",
+              "offline",
+              "repair-required"
+            ]
+          }
+        }
+      },
+      "CLIWorkerConnectionLeaseV1": {
+        "type": "object",
+        "required": [
+          "epoch",
+          "expires_at",
+          "heartbeat_seconds"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "heartbeat_seconds": {
+            "type": "integer",
+            "const": 30
+          }
+        }
+      },
+      "CLIWorkerConnectionStartV1": {
+        "type": "object",
+        "required": [
+          "epoch",
+          "connection_intent"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "connection_intent": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CLIWorkerConnectionFenceV1": {
+        "type": "object",
+        "required": [
+          "epoch",
+          "connection_intent"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "connection_intent": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CLIWorkerPolicyAcknowledgmentReceiptV1": {
+        "type": "object",
+        "required": [
+          "applied_revision",
+          "connection_epoch"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "applied_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "connection_epoch": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        }
+      },
+      "CLIWorkerPolicyAcknowledgmentV1": {
+        "type": "object",
+        "required": [
+          "epoch",
+          "connection_intent",
+          "revision",
+          "schema_version",
+          "repository_digest",
+          "runner_version",
+          "capability_verified",
+          "local_consent"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "connection_intent": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "schema_version": {
+            "type": "integer",
+            "const": 1
+          },
+          "repository_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "runner_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "capability_verified": {
+            "type": "boolean"
+          },
+          "local_consent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CLIWorkerDelegationV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "worker_id",
+          "task_id",
+          "project_id",
+          "task_revision",
+          "saved_revision",
+          "applied_revision",
+          "assign_to_self",
+          "revision",
+          "state"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "worker_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "task_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "saved_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "applied_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "assign_to_self": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "admitted",
+              "cancel_requested",
+              "canceled",
+              "finished"
+            ]
+          }
+        }
+      },
+      "CLIWorkerDelegationCreateV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "operation_id",
+          "expected_task_revision",
+          "expected_saved_revision",
+          "expected_applied_revision"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "operation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_task_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "expected_saved_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "expected_applied_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "assign_to_self": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "CLIWorkerDelegationCancelV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation_id",
+          "expected_revision"
+        ],
+        "properties": {
+          "operation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        }
+      },
       "CLIWorkerReadyDelegationsV1": {
         "type": "object",
         "additionalProperties": false,
@@ -3684,6 +5444,198 @@
           "state": {
             "type": "string",
             "const": "queued"
+          }
+        }
+      },
+      "CLITaskWorkerRunV1Page": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "next_cursor"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/CLITaskWorkerRunV1"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Opaque cursor bound to the caller, Workspace and exact projection subject."
+          }
+        }
+      },
+      "CLITaskWorkerRunV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "run_id",
+          "worker_id",
+          "human_actor_id",
+          "runner_kind",
+          "status",
+          "outcome",
+          "result_ready"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "worker_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "human_actor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "runner_kind": {
+            "type": "string",
+            "enum": [
+              "codex"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "claimed",
+              "interrupted",
+              "released",
+              "finalized",
+              "reconciled"
+            ]
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "started",
+              "progress",
+              "blocked",
+              "verification-passed",
+              "verification-failed",
+              "pull-request"
+            ]
+          },
+          "result_ready": {
+            "type": "boolean",
+            "description": "A typed result was admitted for this run. This observation does not confer completion authority."
+          }
+        }
+      },
+      "CLIWorkerRunV1Page": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "next_cursor"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/CLIWorkerRunV1"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Opaque cursor bound to the caller, Workspace and exact projection subject."
+          }
+        }
+      },
+      "CLIWorkerRunV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "run_id",
+          "worker_id",
+          "human_actor_id",
+          "runner_kind",
+          "status",
+          "outcome",
+          "result_ready",
+          "task_id",
+          "owner_id",
+          "claim_generation",
+          "policy_revision"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "worker_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "human_actor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "runner_kind": {
+            "type": "string",
+            "enum": [
+              "codex"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "claimed",
+              "interrupted",
+              "released",
+              "finalized",
+              "reconciled"
+            ]
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "started",
+              "progress",
+              "blocked",
+              "verification-passed",
+              "verification-failed",
+              "pull-request"
+            ]
+          },
+          "result_ready": {
+            "type": "boolean",
+            "description": "A typed result was admitted for this run. This observation does not confer completion authority."
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "claim_generation": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "policy_revision": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$"
+          },
+          "result_receipt": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "verification_receipt": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       }
@@ -4131,6 +6083,33 @@
             }
           }
         }
+      },
+      "UnprocessableEntity": {
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "The request is syntactically valid but violates a domain invariant.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/CacheControlNoStore"
+          },
+          "Assign-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "X-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "Assign-API-Version": {
+            "$ref": "#/components/headers/AssignAPIVersion"
+          },
+          "Assign-Server-Version": {
+            "$ref": "#/components/headers/AssignServerVersion"
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -4148,6 +6127,11 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "Registered worker run access token"
+      },
+      "workerDeviceBearerV1": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Assign worker device credential"
       }
     }
   }

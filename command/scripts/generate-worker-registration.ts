@@ -16,7 +16,21 @@ const registrationOperations = [
   "updateCLIWorkerPolicy",
 ];
 
-const readyOperation = "listCLIWorkerReadyDelegations";
+const devicePath = "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}";
+const workerPath = "/api/v1/cli/workers/{worker_id}";
+const catalogRoutes = {
+  readCLIWorkerConnection: ["get", devicePath + "/connection", "workerDeviceBearerV1"],
+  startCLIWorkerConnection: ["post", devicePath + "/connection/start", "workerDeviceBearerV1"],
+  heartbeatCLIWorkerConnection: ["post", devicePath + "/connection/heartbeat", "workerDeviceBearerV1"],
+  closeCLIWorkerConnection: ["post", devicePath + "/connection/close", "workerDeviceBearerV1"],
+  acknowledgeCLIWorkerPolicy: ["post", devicePath + "/connection/policy-acknowledgment", "workerDeviceBearerV1"],
+  createCLIWorkerDelegation: ["post", workerPath + "/delegations", "developerAccessToken"],
+  readCLIWorkerDelegation: ["get", workerPath + "/delegations/{delegation_id}", "developerAccessToken"],
+  cancelCLIWorkerDelegation: ["post", workerPath + "/delegations/{delegation_id}/cancel", "developerAccessToken"],
+  listCLIWorkerReadyDelegations: ["get", devicePath + "/ready-delegations", "workerDeviceBearerV1"],
+  listCLITaskWorkerRuns: ["get", "/api/v1/cli/tasks/{task_id}/worker-runs", "developerAccessToken"],
+  listCLIWorkerRuns: ["get", workerPath + "/runs", "developerAccessToken"],
+} as const;
 const claimCredentials = {
   claimWorkerTask: "workerDeviceToken",
   readWorkerTaskClaimReceipt: "workerDeviceToken",
@@ -25,6 +39,8 @@ const claimCredentials = {
   releaseWorkerTask: "workerRunToken",
   recordWorkerTaskEvidence: "workerRunToken",
   readWorkerTaskEvidenceReceipt: "workerDeviceToken",
+  recordWorkerTaskResult: "workerRunToken",
+  readWorkerTaskResultReceipt: "workerDeviceToken",
   readWorkerTaskReleaseReceipt: "workerDeviceToken",
   finalizeWorkerTask: "workerRunToken",
   readWorkerTaskFinalizeReceipt: "workerDeviceToken",
@@ -35,13 +51,12 @@ const claimCredentials = {
   issueWorkerTaskRunCredential: "workerDeviceToken",
   readWorkerTaskRunCredential: "workerDeviceToken",
 } as const;
-const operations = claims ? [...Object.keys(claimCredentials), readyOperation] : registrationOperations;
+const operations = claims ? [...Object.keys(claimCredentials), ...Object.keys(catalogRoutes)] : registrationOperations;
 const authorities = {
   developerAccessToken: "cli_oauth_grant",
   workerDeviceToken: "registered_worker_device",
   workerRunToken: "registered_worker_run",
 } as const;
-type Credential = keyof typeof authorities;
 
 type Schema = {
   $ref?: string;
@@ -65,7 +80,7 @@ type Content = { content: Record<string, { schema: Schema }> };
 type Operation = {
   operationId: string;
   security: Record<string, string[]>[];
-  "x-assign-authority": { credentials: string[]; required_scope: string; client_selects_owner: boolean };
+  "x-assign-authority": { credentials: string[]; required_scope?: string; client_selects_owner: boolean };
   parameters?: Parameter[];
   requestBody?: Content & { "x-assign-max-bytes": number };
   responses: Record<string, Content | { $ref: string }>;
@@ -91,13 +106,18 @@ function verifyOperations(paths: Projection["paths"]) {
   const selected = rows(paths).map(({ operation }) => operation.operationId).sort();
   if (json(selected) !== json([...operations].sort())) throw new Error("Worker operation allowlist differs");
   for (const { path, operation, method } of rows(paths)) {
-    if (claims && operation.operationId === readyOperation) {
-      if (path !== "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/ready-delegations" ||
-          method !== "get" || operation.requestBody ||
-          json(operation.security) !== json([{ workerDeviceBearerV1: [] }]) ||
-          json(operation["x-assign-authority"].credentials) !== json(["worker_device_credential"]) ||
-          operation["x-assign-authority"].client_selects_owner !== false) {
-        throw new Error("Worker ready feed authority differs");
+    const selectedRoute = catalogRoutes[operation.operationId as keyof typeof catalogRoutes];
+    if (claims && selectedRoute) {
+      const [expectedMethod, expectedPath, family] = selectedRoute;
+      const device = family === "workerDeviceBearerV1";
+      const authority = operation["x-assign-authority"];
+      if (path !== expectedPath || method !== expectedMethod ||
+          json(operation.security) !== json([{ [family]: [] }]) ||
+          json(authority.credentials) !== json([device ? "worker_device_credential" : "cli_oauth_grant"]) ||
+          authority.required_scope !== (device ? undefined : method === "get" ? "assign:read" : "assign:write") ||
+          authority.client_selects_owner !== false ||
+          (method === "post" ? operation.requestBody?.["x-assign-max-bytes"] !== 16 * 1024 : operation.requestBody)) {
+        throw new Error(`Worker execution authority or limit differs for ${operation.operationId}`);
       }
       continue;
     }
@@ -143,18 +163,21 @@ function project(): Projection {
   if (claims && (!devicePrefix || !runPrefix)) throw new Error("Missing Core worker credential family");
 
   const paths: Projection["paths"] = {};
-  const readySource = claims ? JSON.parse(read("assign-core/contracts/api/src/paths/worker-catalog.v1.json")) as Fragment : undefined;
-  if (claims && !read("assign-core/internal/httpapi/worker_connections.go").includes('r.Get(workerDevicePath+"/ready-delegations", routes.ready)')) {
-    throw new Error("Missing Core ready feed route");
+  const catalogSource = claims ? JSON.parse(read("assign-core/contracts/api/src/paths/worker-catalog.v1.json")) as Fragment : undefined;
+  if (claims) {
+    // Capture the runtime owners alongside the canonical fragments.
+    for (const owner of ["worker_catalog", "worker_connections", "worker_delegations"]) {
+      read(`assign-core/internal/httpapi/${owner}.go`);
+    }
   }
-  for (const { path, method, operation } of rows({ ...source.paths, ...readySource?.paths })) {
+  for (const { path, method, operation } of rows({ ...source.paths, ...catalogSource?.paths })) {
     if (!operations.includes(operation.operationId)) continue;
-    if (claims && operation.operationId !== readyOperation) {
+    if (claims && Object.hasOwn(claimCredentials, operation.operationId)) {
       const action = path.split("/").at(-1);
       if (!(catalog.includes(`"${action}"`) || catalog.includes(`"/${action}"`)) || !catalog.includes("decodeJSONBody(r, 16*1024, true,")) {
         throw new Error(`Missing Core claim route or body limit for ${operation.operationId}`);
       }
-    } else if (operation.requestBody) {
+    } else if (!claims && operation.requestBody) {
       const handler = { registerCLIWorker: "register", updateCLIWorkerPolicy: "updatePolicy" }[operation.operationId];
       const body = catalog.split(`func (routes *WorkerCatalogRoutes) ${handler}(`)[1]?.split("\nfunc ")[0];
       const cap = /decodeJSONBody\(r, (\d+)\*(\d+), true, /.exec(body ?? "");
@@ -166,7 +189,15 @@ function project(): Projection {
   verifyOperations(paths);
 
   const pool = structuredClone(source.components ?? {});
-  if (readySource) Object.assign(pool.schemas ??= {}, readySource.components?.schemas);
+  if (catalogSource) {
+    for (const [section, values] of Object.entries(catalogSource.components ?? {})) {
+      const entries = pool[section] ??= {};
+      for (const [key, value] of Object.entries(values)) {
+        if (Object.hasOwn(entries, key)) throw new Error(`Ambiguous component ${section}/${key}`);
+        entries[key] = value;
+      }
+    }
+  }
   for (const path of [
     "assign-core/contracts/api/src/components/shared.yaml",
     ...["comments", "contract", "errors", "problems", "shared"].map(name => `openapi-spec/src/components/${name}.yaml`),
@@ -209,7 +240,7 @@ function project(): Projection {
   if (scheme?.type !== "http" || scheme.scheme !== "bearer") throw new Error("Missing Core bearer security scheme");
   components.securitySchemes = {
     developerAccessToken: { type: scheme.type, scheme: scheme.scheme, bearerFormat: "Assign CLI OAuth access token" },
-    ...(claims ? source.components?.securitySchemes : {}),
+    ...(claims ? { ...source.components?.securitySchemes, ...catalogSource?.components?.securitySchemes } : {}),
   };
   return {
     audience: "private-cli", sources, bearerPrefix,
@@ -223,6 +254,7 @@ function schemaType(schema: Schema): string {
     if (!/^#\/components\/schemas\/\w+$/.test(schema.$ref)) throw new Error(`Unsupported schema ${schema.$ref}`);
     return schema.$ref.split("/").at(-1)!;
   }
+  if (claims && schema.type === "integer" && schema.format === "int64") return "bigint";
   if (schema.const !== undefined) return JSON.stringify(schema.const);
   if (schema.enum) return schema.enum.map(value => JSON.stringify(value)).join(" | ");
   if (schema.allOf) return schema.allOf.map(part => `(${schemaType(part)})`).join(" & ");
@@ -261,7 +293,7 @@ function schemaType(schema: Schema): string {
 function generate(projection: Projection): string {
   const credentials = claims ? Object.keys(authorities) : ["developerAccessToken"];
   if (projection.audience !== "private-cli" ||
-      json(Object.keys(projection.components.securitySchemes ?? {})) !== json(credentials) ||
+      json(Object.keys(projection.components.securitySchemes ?? {})) !== json(claims ? [...credentials, "workerDeviceBearerV1"] : credentials) ||
       (claims && !projection.machineBearerPrefixes)) {
     throw new Error("Private CLI projection required");
   }
@@ -272,6 +304,7 @@ function generate(projection: Projection): string {
     "// Generated by command/scripts/generate-worker-registration.ts. Do not edit.",
     `import { createWorkerRequest } from "${requestModule}";`,
     `import type { WorkerTransport } from "${requestModule}";`,
+    ...(claims ? ['import { decodeWorkerInt64Response, encodeWorkerJSON } from "./int64.ts";'] : []),
     "",
     `export const ${claims ? "workerTaskClaimsIdentity" : "workerRegistrationIdentity"} = {`,
     `  audience: "private-cli",`,
@@ -302,6 +335,18 @@ function generate(projection: Projection): string {
   }
   lines.push("}", "");
   if (claims) {
+    for (const { operation } of rows(projection.paths)) {
+      const response = operation.responses["200"] as Content;
+      const model = schemas[schemaType(response.content["application/json"]!.schema)];
+      const fields = Object.entries(model?.properties ?? {})
+        .filter(([, property]) => property.type === "integer" && property.format === "int64")
+        .map(([key]) => key);
+      if (fields.length) {
+        const id = operation.operationId;
+        lines.push(`export function decode${id[0]!.toUpperCase()}${id.slice(1)}(response: Response, maxBytes: number) {`,
+          `  return decodeWorkerInt64Response<WorkerTaskClaimsSuccess["${id}"]>(response, maxBytes, ${JSON.stringify(fields)});`, "}", "");
+      }
+    }
     lines.push("export type WorkerTaskClaimTransport = Omit<WorkerTransport, \"accessToken\"> & {",
       ...credentials.map(key => `  ${key}?: WorkerTransport["accessToken"];`), "};", "",
       "export function createWorkerTaskClaimsClient(transport: WorkerTaskClaimTransport) {");
@@ -309,7 +354,7 @@ function generate(projection: Projection): string {
     for (const [key, prefix] of Object.entries(prefixes)) {
       lines.push(`  const ${key} = createWorkerRequest({ ...transport, accessToken: async () => {`,
         `    if (!transport.${key}) throw new TypeError("Missing worker credential for this operation");`,
-        `    return transport.${key}();`, `  } }, ${JSON.stringify(prefix)}, "the bound credential for this operation");`);
+        `    return transport.${key}();`, `  } }, ${JSON.stringify(prefix)}, "the bound credential for this operation", encodeWorkerJSON);`);
     }
   } else {
     lines.push("export function createWorkerRegistrationClient(transport: WorkerTransport) {",
@@ -345,8 +390,8 @@ function generate(projection: Projection): string {
       }
     }
     if (body && !Number.isSafeInteger(body["x-assign-max-bytes"])) throw new Error("Missing canonical body limit");
-    const request = operation.operationId === readyOperation ? "workerDeviceToken" :
-      claims ? Object.keys(operation.security[0]!)[0] as Credential : "request";
+    const family = Object.keys(operation.security[0]!)[0];
+    const request = family === "workerDeviceBearerV1" ? "workerDeviceToken" : claims ? family : "request";
     lines.push(`      return ${request}("${method.toUpperCase()}", \`${url}\`, signal${query.length ? ", { query }" :
       body ? `, { body: input.body, maxBytes: ${body["x-assign-max-bytes"]} }` : ""});`, "    },");
   }

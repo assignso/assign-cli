@@ -10,7 +10,7 @@ export interface WorkerTransport {
 type RequestData = { query: URLSearchParams } | { body: unknown; maxBytes: number };
 
 /** Return the raw response so the caller retains Problem Details and Retry-After. */
-export function createWorkerRequest(transport: WorkerTransport, bearerPrefix: string, credentialLabel = "an interactive Assign CLI access token") {
+export function createWorkerRequest(transport: WorkerTransport, bearerPrefix: string, credentialLabel = "an interactive Assign CLI access token", encodeBody = JSON.stringify) {
   const origin = new URL(transport.origin);
   if (origin.protocol !== "https:" || origin.username || origin.password ||
       origin.pathname !== "/" || origin.search || origin.hash) {
@@ -23,7 +23,7 @@ export function createWorkerRequest(transport: WorkerTransport, bearerPrefix: st
     const headers = new Headers({ Accept: "application/json, application/problem+json" });
     let body: string | undefined;
     if (data && "body" in data) {
-      body = JSON.stringify(data.body);
+      body = encodeBody(data.body);
       if (body === undefined) throw new TypeError("Worker request body is required");
       if (new TextEncoder().encode(body).byteLength > data.maxBytes) {
         throw new RangeError("Worker request exceeds the UTF-8 body limit");

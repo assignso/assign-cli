@@ -304,8 +304,21 @@ remains with the native packet and release owners.
 
 ## Private worker Task receipts
 
-The private `src/worker-task-claims` client is generated from Core's v1
-OpenAPI fragment. The `operations.ts` adapter maps HTTP and transport
+The private `src/worker-task-claims` client generates 29 operations from Core's
+v1 worker catalog and claim fragments. Device credentials cover connection,
+policy acknowledgment, the ready feed, claim admission and receipt reads. Run
+credentials cover fenced progress, result and other admitted effects. The
+interactive CLI grant covers delegation changes and inspection under current
+Task access. Current-human Next has its own resource and credential admission.
+
+Use the exported request models, `WorkerTaskClaimsSuccess` and
+`WorkerTaskClaimsProblems` for the operation's types. Methods return the raw
+response, including Problem Details and Retry-After. Connection and delegation
+models use `bigint` for Core's JSON int64 fields. Use the generated
+`decode…` functions with a caller-owned byte limit for those success responses.
+Claim, ready-feed and run-inspection decimal strings retain their wire spelling.
+
+The `operations.ts` adapter maps HTTP and transport
 failures to CLI exit statuses and carries the original operation ID through
 recovery. The worker supervisor persists the exact intent before calling
 `apply`. After an uncertain result, call that operation's `reconcile` with
@@ -316,8 +329,9 @@ Use `bun scripts/generate-worker-registration.ts project worker-task-claims`
 from this directory to refresh the projection from the workspace. Use
 `generate worker-task-claims` to regenerate the binding. The matching
 `check-source worker-task-claims` and `check worker-task-claims` modes check
-the source and binding. The prepared `fixtures/worker-task-claims.test.ts`
-selector runs in CW-07.
+the source and binding. The prepared `fixtures/worker-execution-bindings.test.ts`
+selector covers binding scope, exact revisions and transport bounds.
+`fixtures/worker-task-claims.test.ts` also runs in CW-07.
 
 ### Private external worker selection
 

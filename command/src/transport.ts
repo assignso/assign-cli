@@ -51,7 +51,24 @@ export function responseFailure(status: number): CommandFailure {
 }
 
 /** Keep raw wire shape; operation owners validate before writing any stdout. */
-export async function decodeResponse(response: Response, maxBytes: number): Promise<unknown> {
+export function decodeResponse(response: Response, maxBytes: number): Promise<unknown> {
+  return decodeJSONResponse(response, maxBytes, text => {
+    // Inspect number lexemes before JSON.parse can round them. Rejecting all
+    // unsafe magnitudes is conservative and does not invent an identity schema.
+    const tokens = text.match(/"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g) ?? [];
+    for (const token of tokens) {
+      if (token.startsWith('"')) continue;
+      const number = Number(token);
+      if (!Number.isFinite(number) || Math.abs(number) > Number.MAX_SAFE_INTEGER ||
+          (Number.isInteger(number) && /[.eE]/.test(token))) throw new Error("unsafe number");
+    }
+    return JSON.parse(text);
+  });
+}
+
+export async function decodeJSONResponse<T>(
+  response: Response, maxBytes: number, parse: (text: string) => T,
+): Promise<T> {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) throw new RangeError("Invalid response limit");
   if (!response.ok) {
     void response.body?.cancel().catch(() => {});
@@ -70,16 +87,7 @@ export async function decodeResponse(response: Response, maxBytes: number): Prom
       text += decoder.decode(part.value, { stream: true });
     }
     text += decoder.decode();
-    // Inspect number lexemes before JSON.parse can round them. Rejecting all
-    // unsafe magnitudes is conservative and does not invent an identity schema.
-    const tokens = text.match(/"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g) ?? [];
-    for (const token of tokens) {
-      if (token.startsWith('"')) continue;
-      const number = Number(token);
-      if (!Number.isFinite(number) || Math.abs(number) > Number.MAX_SAFE_INTEGER ||
-          (Number.isInteger(number) && /[.eE]/.test(token))) throw new Error("unsafe number");
-    }
-    return JSON.parse(text);
+    return parse(text);
   } catch {
     throw new CommandFailure("Malformed or unsafe API response", 1);
   } finally {
