@@ -46,7 +46,7 @@ export function transportConfiguration(sdk: SDKRecovery, options: {
 
 export function responseFailure(status: number): CommandFailure {
   const code = status === 401 || status === 403 ? 3 :
-    status === 400 || status === 422 ? 2 : status === 409 || status === 412 ? 5 : 1;
+    [400, 406, 413, 415, 422].includes(status) ? 2 : status === 409 || status === 412 ? 5 : 1;
   return new CommandFailure(`API request failed with HTTP ${status}`, code);
 }
 

@@ -27,7 +27,7 @@ describe("pinned SDK transport", () => {
     const page = await sdkResult(() => api.listWorkspaceTasksRaw({ workspaceId: "w", limit: 100 }));
     expect(await decodeResponse((page as { raw: Response }).raw, 1000)).toEqual({ data: [{ revision: "9223372036854775807" }], next_cursor: null });
   });
-  test.each([[401,3], [403,3], [409,5], [412,5], [429,1], [426,1], [400,2], [500,1]])("HTTP %i maps exit %i without leaking body", async (status, exitCode) => {
+  test.each([[401,3], [403,3], [409,5], [412,5], [429,1], [406,2], [415,2], [400,2], [500,1]])("HTTP %i maps exit %i without leaking body", async (status, exitCode) => {
     const api = new TasksApi(new Configuration(config(async () => new Response("secret", { status }))));
     try { await sdkResult(() => api.listWorkspaceTasksRaw({ workspaceId: "w" })); throw new Error("expected failure"); }
     catch (error) { expect(error).toMatchObject({ exitCode }); expect(String(error)).not.toContain("secret"); }
@@ -78,13 +78,15 @@ describe("pinned SDK transport", () => {
   });
 });
 
-test.each([[200,0], [403,3], [409,5], [429,1], [426,1], [299,1]])("stream boundary HTTP %i exits %i", async (status, expected) => {
+test.each([[200,0], [403,3], [409,5], [429,1], [406,2], [415,2], [299,1]])("stream boundary HTTP %i exits %i", async (status, expected) => {
   const stdout = new PassThrough(), stderr = new PassThrough();
   let out = "", err = "";
   stdout.on("data", chunk => { out += chunk; }); stderr.on("data", chunk => { err += chunk; });
   const code = await runCommand(["read"], { stdin: Readable.from([]), stdout, stderr }, undefined, program => {
     program.command("read").action(async () => {
-      const result = await decodeResponse(new Response(status === 299 ? '{' : '{"revision":"9223372036854775807"}', { status }), 1000);
+      const refusal = status === 406 ? 'not_acceptable' : status === 415 ? 'unsupported_media_type' : undefined;
+      const body = refusal ? JSON.stringify({ status, code: refusal }) : status === 299 ? '{' : '{"revision":"9223372036854775807"}';
+      const result = await decodeResponse(new Response(body, { status }), 1000);
       await writeStdout({ stdin: Readable.from([]), stdout, stderr }, JSON.stringify(result) + "\n");
     });
   });
