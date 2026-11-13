@@ -1,0 +1,42 @@
+{
+  "schema": "assign.cli.canonical-richtext.v1",
+  "owner": "assign-core/internal/richtext",
+  "files": [
+    {
+      "name": "callout.go",
+      "sha256": "9c8c3cb2f2d94138cf3fee5895e0d5d384075edae315abfb270d1220ad126f92"
+    },
+    {
+      "name": "callout_emoji.go",
+      "sha256": "b7cda67f76a38cd6ba3f3554fe1c0507772e7ed7aa43bf20cead2b33ae1eaada"
+    },
+    {
+      "name": "callout_icon_names.go",
+      "sha256": "f4c0f970e0a1af4d98e5212a103e4f089350e2f05e701327194a8c3a3ec4d704"
+    },
+    {
+      "name": "canonical.go",
+      "sha256": "4353ffcb0eb9e6d6ccf9b36dd8a45c47189c249b667756ab8228f48e9a4327fc"
+    },
+    {
+      "name": "document.go",
+      "sha256": "bcdc0f48d1d26627cc57ee8a62a4ab96d3187c1416bb206cc8df271d51015237"
+    },
+    {
+      "name": "equality.go",
+      "sha256": "073cfeaae335b7a2cc822aba732a814606e86343a1a881a97fd3393155eed0ef"
+    },
+    {
+      "name": "json_spans.go",
+      "sha256": "fb03b8bd8e9b9875458a97b30cf39ec675a2fb83ba76c6ead214b9081326f6c6"
+    },
+    {
+      "name": "markdown.go",
+      "sha256": "56454c6a832392c18edc1dfa7c93d74fbb9d7b023d5f7add574193e60f1138d8"
+    },
+    {
+      "name": "table.go",
+      "sha256": "92702711393522c743a842da077b982e9d305ee9d789f1b72f0eaddd2b4ad2b0"
+    }
+  ]
+}

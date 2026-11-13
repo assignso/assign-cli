@@ -6,7 +6,7 @@
   "packageManager": "bun@1.4.3",
   "scripts": {
     "build": "bun ./scripts/build.ts",
-    "test:local": "bun run typecheck && bun test fixtures/command.test.ts fixtures/config.test.ts fixtures/context.test.ts fixtures/credentials.test.ts fixtures/credentials-linux.test.ts fixtures/credentials-windows.test.ts && bun run build && bun scripts/build.ts --fixture",
+    "test:local": "bun run typecheck && bun test fixtures/command.test.ts fixtures/output.test.ts fixtures/config.test.ts fixtures/context.test.ts fixtures/credentials.test.ts fixtures/credentials-linux.test.ts fixtures/credentials-windows.test.ts && bun run build && bun scripts/build.ts --fixture",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

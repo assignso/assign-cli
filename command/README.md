@@ -244,3 +244,7 @@ the adjacent `.commands.json` records individual prepared command results.
 No aggregate six-target qualification is implied by one packet passing.
 
 Orchestrator development check: `python3 fixtures/native-packet.test.py`.
+
+Output projection (`CLI-TS-14`): `src/output.ts` owns compact deterministic Go-compatible JSON, scalar/list streams, terminal control/bidi sanitation and the 65,536-code-point Document excerpt. `src/richtext.ts` consumes canonical JSON without an editor model or browser dependency; unknown nodes/marks fail explicitly. Simple tables become GFM; complex tables retain compact lexical JSON in an inert `assign-table` fence. Code fences grow around embedded backticks. Output never adds ANSI or pads Unicode labels by UTF-16 length.
+
+Run `bun test fixtures/output.test.ts fixtures/command.test.ts` and `bun run typecheck`. `node ../scripts/generate-command-richtext.mjs --check` checks the frozen CLI generated Core source hashes and generated projection limits. Deliberate source upgrades use the existing canonical generator first, then this generator and Go differential fixtures. Recreate the offline oracle from the CLI root with `go run ./command/fixtures/go-output > command/fixtures/richtext-go.json`; the checked fixture pins exact canonical values independently of JavaScript object insertion order. No API call or private application import is involved.

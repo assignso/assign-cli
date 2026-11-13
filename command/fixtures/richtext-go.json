@@ -1,0 +1,367 @@
+[
+  {
+    "input": {
+      "schema_version": 1,
+      "type": "doc",
+      "content": [
+        {
+          "content": [
+            {
+              "text": "Hello ",
+              "type": "text"
+            },
+            {
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ],
+              "text": "bold",
+              "type": "text"
+            },
+            {
+              "text": " and ",
+              "type": "text"
+            },
+            {
+              "marks": [
+                {
+                  "type": "italic"
+                }
+              ],
+              "text": "italic",
+              "type": "text"
+            },
+            {
+              "text": ".",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ]
+    },
+    "output": "Hello **bold** and *italic*.\n"
+  },
+  {
+    "input": {
+      "schema_version": 1,
+      "type": "doc",
+      "content": [
+        {
+          "attrs": {
+            "icon": null,
+            "kind": "note"
+          },
+          "content": [
+            {
+              "content": [
+                {
+                  "text": "Body",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "callout"
+        }
+      ]
+    },
+    "output": "\u003e [!NOTE]\n\u003e Body\n"
+  },
+  {
+    "input": {
+      "schema_version": 1,
+      "type": "doc",
+      "content": [
+        {
+          "content": [
+            {
+              "marks": [
+                {
+                  "attrs": {
+                    "href": "https://example.com/a"
+                  },
+                  "type": "link"
+                }
+              ],
+              "text": "go",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ]
+    },
+    "output": "[go](https://example.com/a)\n"
+  },
+  {
+    "input": {
+      "schema_version": 1,
+      "type": "doc",
+      "content": [
+        {
+          "attrs": {
+            "language": "ts"
+          },
+          "content": [
+            {
+              "text": "```\nx",
+              "type": "text"
+            }
+          ],
+          "type": "codeBlock"
+        }
+      ]
+    },
+    "output": "````ts\n```\nx\n````\n"
+  },
+  {
+    "input": {
+      "schema_version": 2,
+      "type": "doc",
+      "content": [
+        {
+          "content": [
+            {
+              "content": [
+                {
+                  "attrs": {
+                    "align": null,
+                    "colspan": 1,
+                    "colwidth": null,
+                    "rowspan": 1
+                  },
+                  "content": [
+                    {
+                      "content": [
+                        {
+                          "text": "H",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    }
+                  ],
+                  "type": "tableHeader"
+                }
+              ],
+              "type": "tableRow"
+            },
+            {
+              "content": [
+                {
+                  "attrs": {
+                    "align": null,
+                    "colspan": 1,
+                    "colwidth": null,
+                    "rowspan": 1
+                  },
+                  "content": [
+                    {
+                      "content": [
+                        {
+                          "text": "A",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    }
+                  ],
+                  "type": "tableCell"
+                }
+              ],
+              "type": "tableRow"
+            }
+          ],
+          "type": "table"
+        }
+      ]
+    },
+    "output": "| H |\n| --- |\n| A |\n"
+  },
+  {
+    "input": {
+      "schema_version": 1,
+      "type": "doc",
+      "content": [
+        {
+          "content": [
+            {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "text": "first",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "listItem"
+            },
+            {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "text": "second",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "listItem"
+            }
+          ],
+          "type": "bulletList"
+        }
+      ]
+    },
+    "output": "- first\n- second\n"
+  },
+  {
+    "input": {
+      "schema_version": 1,
+      "type": "doc",
+      "content": [
+        {
+          "attrs": {
+            "start": 1
+          },
+          "content": [
+            {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "text": "first",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "listItem"
+            },
+            {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "text": "next",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "listItem"
+            }
+          ],
+          "type": "orderedList"
+        }
+      ]
+    },
+    "output": "1. first\n2. next\n"
+  },
+  {
+    "input": {
+      "schema_version": 1,
+      "type": "doc",
+      "content": [
+        {
+          "content": [
+            {
+              "content": [
+                {
+                  "text": "quote",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "blockquote"
+        }
+      ]
+    },
+    "output": "\u003e quote\n"
+  },
+  {
+    "input": {
+      "schema_version": 1,
+      "type": "doc",
+      "content": [
+        {
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "text": "Heading",
+              "type": "text"
+            }
+          ],
+          "type": "heading"
+        },
+        {
+          "type": "horizontalRule"
+        }
+      ]
+    },
+    "output": "# Heading\n\n---\n"
+  },
+  {
+    "input": {
+      "schema_version": 1,
+      "type": "doc",
+      "content": [
+        {
+          "content": [
+            {
+              "marks": [
+                {
+                  "type": "underline"
+                }
+              ],
+              "text": "under",
+              "type": "text"
+            },
+            {
+              "text": " and ",
+              "type": "text"
+            },
+            {
+              "marks": [
+                {
+                  "type": "strike"
+                }
+              ],
+              "text": "strike",
+              "type": "text"
+            },
+            {
+              "text": " and ",
+              "type": "text"
+            },
+            {
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ],
+              "text": "code",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ]
+    },
+    "output": "++under++ and ~~strike~~ and `code`\n"
+  }
+]
