@@ -1,9 +1,9 @@
 {
   "audience": "private-cli",
   "sources": {
-    "assign-core/contracts/api/src/paths/worker-task-claims.v1.json": "de10febe3e1c303eeeaf8365013e19bf8c4e10dc8195c6ddd0cb20fab35de0a9",
+    "assign-core/contracts/api/src/paths/worker-task-claims.v1.json": "9f2e8705929a83ae3ec7ec078cabcee6ceb4d7224ac1738b343fef666a160035",
     "assign-core/internal/cliauth/service.go": "2f7754f1baa8e2b70c7d0567bea87b1ec11515664c12ed685c842a091bbb1f72",
-    "assign-core/internal/httpapi/worker_task_claims.go": "f17f4f1c2124093d7622a37e815da78ce1a7b812ca6ae9a77486ed13313da066",
+    "assign-core/internal/httpapi/worker_task_claims.go": "ca37fb625c14a3bfa9dbac12cc09ee22a7762af1aef44b52a5de0a8ee44b4c46",
     "assign-core/internal/mcpauth/worker_credentials.go": "ebf7e628939417a63965b0ea6f387cd901ec471a66142786d1d7e76b810844e0",
     "assign-core/contracts/api/src/paths/worker-catalog.v1.json": "8a4161d300af5a9c47eb0428f5fb0eff45611eaf50c0ecdd38c73a2e1a40f8e8",
     "assign-core/internal/httpapi/worker_connections.go": "1771060371f41e68691e9b3865402d0a9a999248926747d8a17519b639758ce2",
@@ -3509,7 +3509,8 @@
               "progress",
               "blocked",
               "verification-passed",
-              "verification-failed"
+              "verification-failed",
+              "pull-request"
             ]
           },
           "blocked_reason": {
@@ -3522,9 +3523,33 @@
               "limit",
               "verification"
             ]
+          },
+          "pull_request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "url",
+              "source_sha"
+            ],
+            "properties": {
+              "url": {
+                "type": "string",
+                "pattern": "^https://github\\.com/[a-zA-Z0-9][a-zA-Z0-9-]{0,38}/[a-zA-Z0-9_.-]{1,100}/pull/[1-9][0-9]{0,15}$",
+                "not": {
+                  "pattern": "/\\.{1,2}/"
+                }
+              },
+              "source_sha": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$",
+                "not": {
+                  "const": "0000000000000000000000000000000000000000"
+                }
+              }
+            }
           }
         },
-        "description": "Supply blocked_reason only with the blocked event. Blocked events require a reason from the bounded vocabulary.",
+        "description": "Blocked events require blocked_reason. Pull-request events require pull_request and explicit isolated branch, push, PR and publication grants. Other events omit these fields.",
         "if": {
           "properties": {
             "event": {
@@ -3535,13 +3560,37 @@
         "then": {
           "required": [
             "blocked_reason"
-          ]
+          ],
+          "not": {
+            "required": [
+              "pull_request"
+            ]
+          }
         },
         "else": {
           "not": {
             "required": [
               "blocked_reason"
             ]
+          },
+          "if": {
+            "properties": {
+              "event": {
+                "const": "pull-request"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "pull_request"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "pull_request"
+              ]
+            }
           }
         }
       },

@@ -354,7 +354,27 @@ provided port zero and advertise the actual bound port. Honor the abort signal
 and call `confirmStopped()` only after the native process and services stop.
 Keep the run reservation and `environment.json` available to the supervisor
 for recovery. Inspect retained or partial worktrees and confirm process
-ownership before manual cleanup. CW-06 owns optional PR handling.
+ownership before manual cleanup.
 
 CW-07 runs `bun test fixtures/worker-environment.test.ts` with the completed
 feature batch. The fixture uses disposable Git repositories and loopback only.
+
+### Private optional worker pull requests
+
+The supervisor can call the environment's `publishPullRequest` after
+`confirmStopped()`, while it still owns the run slot and claim. Pass the exact
+approved source SHA, local consent for the GitHub.com repository and base, and
+callbacks for the bound worker's current policy and repository-scoped token.
+The policy needs isolated branch, push, PR, publication and comment grants.
+Omit configuration to keep publication disabled. Other providers return a
+skipped result.
+
+On a recoverable result, retain the run state and reconcile from
+`pull-request.json` with the original claim and target. Use
+`publishWorkerPullRequest` under the same exclusive supervisor slot if
+recovering outside the original callback. A linked result records the PR
+and exact SHA in an ordinary Task comment. Release, finalization and review
+remain separate supervisor operations.
+
+CW-07 runs `bun test fixtures/worker-pull-request.test.ts` with prepared
+Git, GitHub and Assign transports alongside the Core worker lifecycle fixture.

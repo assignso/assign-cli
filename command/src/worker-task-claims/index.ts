@@ -4,7 +4,7 @@ import type { WorkerTransport } from "../worker-registration/request.ts";
 
 export const workerTaskClaimsIdentity = {
   audience: "private-cli",
-  projectionSHA256: "f3591ce20a69a62df75fd4bd6494953f7a22abea6255c953d5ba4d13e57e9974",
+  projectionSHA256: "b0fd5c4a7167a0ec94e304835f32d1813a95a8af46c0cd8548ea735dcd8233ae",
   generatorSHA256: "8ee509abc7fea119292ad29845f804395bdf446f33c1c891f4d2c5ee85fc1b0f",
 } as const;
 
@@ -281,8 +281,12 @@ export type WorkerTaskEvidenceInputV1 = {
   expected_revision: string;
   generation: string;
   token: string;
-  event: "started" | "progress" | "blocked" | "verification-passed" | "verification-failed";
+  event: "started" | "progress" | "blocked" | "verification-passed" | "verification-failed" | "pull-request";
   blocked_reason?: "needs-input" | "permission" | "environment" | "dependency" | "limit" | "verification";
+  pull_request?: {
+  url: string;
+  source_sha: string;
+};
 };
 export type CLIWorkerReadyDelegationsV1 = {
   data: Array<CLIWorkerReadyDelegationV1>;

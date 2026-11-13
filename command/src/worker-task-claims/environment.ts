@@ -6,9 +6,10 @@ import { promisify } from "node:util";
 import type { createExternalWorkerSelection } from "./selection.ts";
 import { sameID, workerUUID } from "./operations.ts";
 import { scopeWorkerInterrupts } from "../worker-interrupts.ts";
+import { publishWorkerPullRequest, type WorkerPullRequestOptions, type WorkerPullRequestResult } from "./pull-request.ts";
 
 type Selection = Awaited<ReturnType<ReturnType<typeof createExternalWorkerSelection>["select"]>>;
-type ConfirmedClaim = Extract<Selection, { state: "claimed" }>;
+export type ConfirmedClaim = Extract<Selection, { state: "claimed" }>;
 
 export type WorkerEnvironmentProfile = {
   // Resolved from the approved local profile, before accepting a claim.
@@ -20,7 +21,7 @@ export type WorkerEnvironmentProfile = {
   path: string;
 };
 
-type Environment = {
+export type Environment = {
   taskID: string;
   runID: string;
   branch: string;
@@ -38,6 +39,7 @@ type Environment = {
   // The existing supervisor acknowledges only after its native processes and
   // services have stopped. Without this, leave the worktree for reconciliation.
   confirmStopped(): void;
+  publishPullRequest(options: Omit<WorkerPullRequestOptions, "gitExecutable">): Promise<WorkerPullRequestResult>;
 };
 
 type Stage = "reserved" | "checkout" | "setup" | "execution";
@@ -293,8 +295,25 @@ export async function withExternalWorkerEnvironment<T>(
       if (!(expires > Date.now())) throw new Error("Worker claim expired during setup");
       stopped = false;
       executionStarted = true;
-      const value = await run({ taskID, runID, branch, baseRef, baseSHA, worktree, state,
-        env: Object.freeze(env), signal: bounded, confirmStopped: () => { stopped = true; } });
+      const publicationRun = { taskID, runID, branch, worktree, state, env: Object.freeze(env), signal: bounded };
+      let publication: Promise<WorkerPullRequestResult> | undefined;
+      let runOpen = true;
+      let value: T;
+      try {
+        value = await run({ ...publicationRun, baseRef, baseSHA,
+          confirmStopped: () => { stopped = true; },
+          publishPullRequest: options => {
+            if (!runOpen || !stopped) throw new Error("Worker process must stop before pull request publication");
+            if (publication) throw new Error("Worker pull request publication is already running");
+            publication = publishWorkerPullRequest(claim, publicationRun, { ...options, gitExecutable });
+            void publication.finally(() => { publication = undefined; }).catch(() => {});
+            return publication;
+          },
+        });
+      } finally {
+        runOpen = false;
+        await publication;
+      }
       bounded.throwIfAborted();
       result = "finished";
       return value;
