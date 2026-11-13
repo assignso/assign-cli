@@ -338,3 +338,23 @@ worker/run references and the bounded event in the Task comment.
 
 The prepared selection selector is `bun test fixtures/worker-selection.test.ts`
 in the CW-07 batch.
+
+### Private external worker environment
+
+After a confirmed selection, pass it and the trusted local profile to
+`withExternalWorkerEnvironment` in `src/worker-task-claims/environment.ts`.
+The profile names an approved local repository and pre-existing scratch
+directory outside the source checkout, an absolute Git executable, trusted
+tool PATH, an explicit base ref or SHA, and optional tracked executable with
+fixed arguments. The adapter uses POSIX process groups.
+
+Use the callback's worktree, run-local state and environment for scoped
+preparation and execution. Services using TCP should bind loopback to the
+provided port zero and advertise the actual bound port. Honor the abort signal
+and call `confirmStopped()` only after the native process and services stop.
+Keep the run reservation and `environment.json` available to the supervisor
+for recovery. Inspect retained or partial worktrees and confirm process
+ownership before manual cleanup. CW-06 owns optional PR handling.
+
+CW-07 runs `bun test fixtures/worker-environment.test.ts` with the completed
+feature batch. The fixture uses disposable Git repositories and loopback only.

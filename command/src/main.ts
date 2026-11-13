@@ -1,3 +1,4 @@
+import { hasWorkerInterruptScope } from "./worker-interrupts.ts";
 import type { Command } from "commander";
 import type { Readable, Writable } from "node:stream";
 import { developmentBuild, formatVersion } from "./version.ts";
@@ -100,7 +101,9 @@ let interruptInstalled = false;
 export function processIO(): CommandIO {
   if (!interruptInstalled) {
     interruptInstalled = true;
-    process.once("SIGINT", () => process.exit(130));
+    process.on("SIGINT", () => {
+      if (!hasWorkerInterruptScope()) process.exit(130);
+    });
   }
   // A write failure is also emitted as an event. The write callback owns the exit decision.
   process.stdout.on("error", () => {});
