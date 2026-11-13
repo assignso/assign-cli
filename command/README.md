@@ -46,3 +46,14 @@ Use Python 3.10.18 or later and the pinned Bun. SDK staging also uses Node 24 an
 | Fixture child stdin, EOF and termination | 1952 and 2042 | Prepared bytes round-trip to stdout, then a separate child stays active until the harness terminates it. |
 
 `fixtures/cases.json` fixes request IDs and response payloads. The JSON receipt records each selected assertion and pass/fail outcome. `dist/assign-fixture` uses the same harness with a direct prepared fetch. The staged SDK fixture, its archived source and the Go overlay are feasibility inputs.
+
+
+Shared transport fixtures use an offline export of SDK revision `d12065d63d9dd327b2e42f14ada155822f31702e`:
+
+```sh
+ASSIGN_TEST_SDK_SOURCE=/absolute/path/to/pinned-sdk-export bun test fixtures/transport.test.ts
+```
+
+`src/transport.ts` accepts the public SDK recovery binding at composition time. Use its configuration with the SDK Configuration constructor, call raw operations, and decode with an operation-owned byte limit before validating the complete result and writing output. Cursor traversal remains the SDK's `iteratePages`; pass its signal through each raw request. Wrap the whole request/decode/validation operation with `sdkResult` and the caller's signal. Numeric tokens outside the safe range fail; decimal strings retain their exact spelling. Integer-valued fraction/exponent tokens are conservatively rejected to avoid rounding fractional revisions into integers. Generated model conversion must follow this boundary, never precede it.
+
+The default SDK policy retries reads only. Supply a retry classification only from the canonical operation owner; the SDK retains the original key/body/preconditions. No credential refresh or operation resubmission is implicit. Negotiated capability metadata still needs a canonical producer contract; HTTP error handling alone does not establish that negotiation. Public SDK package/export approval and distribution remain separate from these private candidate checks.
