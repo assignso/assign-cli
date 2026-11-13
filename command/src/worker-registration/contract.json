@@ -1,9 +1,9 @@
 {
   "audience": "private-cli",
   "sources": {
-    "assign-core/contracts/api/src/paths/worker-catalog.v1.json": "b13e4c45519f18830869cad7fb3ba41d7b3363fe69bd05e7452f09a17a26d60e",
+    "assign-core/contracts/api/src/paths/worker-catalog.v1.json": "f54e80f62086a5ed8184f2c349c6f4fa73c598a058172a9c331cd57c01cc0c5b",
     "assign-core/internal/cliauth/service.go": "2f7754f1baa8e2b70c7d0567bea87b1ec11515664c12ed685c842a091bbb1f72",
-    "assign-core/internal/httpapi/worker_catalog.go": "02b5f5353556e30e70f98b68c32ffb8197f61595fd482f5c7d217ebd075331ac",
+    "assign-core/internal/httpapi/worker_catalog.go": "44aa8fb4ea761c38e6ca0d088ae6908351523ce9965b2f80f5ed0f264c0b1a74",
     "assign-core/contracts/api/src/components/shared.yaml": "8c067491c8ca250fab4838030420c7fb5ba62c90b66d70a657c6bd20b65041ac",
     "openapi-spec/src/components/comments.yaml": "48fe38a850b0426863f43fbed79b02847c1ffe3e1002d52f5f7fa3eaa53a1028",
     "openapi-spec/src/components/contract.yaml": "fb3db0fdcf3d0a6b85b468dfe3d1aaa6c14efa8454e23f8af755ddc182b9076d",

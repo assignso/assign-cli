@@ -2,7 +2,7 @@ import type { FetchAPI } from "../transport.ts";
 
 export interface WorkerTransport {
   origin: string;
-  /** Interactive Assign CLI OAuth access token for the selected Workspace. */
+  /** Access token for the request's configured credential family. */
   accessToken: () => Promise<string>;
   fetchApi?: FetchAPI;
 }
@@ -10,7 +10,7 @@ export interface WorkerTransport {
 type RequestData = { query: URLSearchParams } | { body: unknown; maxBytes: number };
 
 /** Return the raw response so the caller retains Problem Details and Retry-After. */
-export function createWorkerRequest(transport: WorkerTransport, bearerPrefix: string) {
+export function createWorkerRequest(transport: WorkerTransport, bearerPrefix: string, credentialLabel = "an interactive Assign CLI access token") {
   const origin = new URL(transport.origin);
   if (origin.protocol !== "https:" || origin.username || origin.password ||
       origin.pathname !== "/" || origin.search || origin.hash) {
@@ -35,7 +35,7 @@ export function createWorkerRequest(transport: WorkerTransport, bearerPrefix: st
     const token = await accessToken();
     signal?.throwIfAborted();
     if (!token.startsWith(bearerPrefix) || token.length === bearerPrefix.length || !/^[A-Za-z0-9_-]+$/.test(token)) {
-      throw new TypeError("Worker API requires an interactive Assign CLI access token");
+      throw new TypeError(`Worker API requires ${credentialLabel}`);
     }
     headers.set("Authorization", `Bearer ${token}`);
     const response = await fetchApi(url, {

@@ -2,9 +2,12 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 
 const root = new URL("../../../", import.meta.url);
-const projectionPath = new URL("../src/worker-registration/contract.json", import.meta.url);
-const bindingPath = new URL("../src/worker-registration/index.ts", import.meta.url);
-const operations = [
+const target = process.argv[3] ?? "worker-registration";
+if (!["worker-registration", "worker-task-claims"].includes(target)) throw new Error("Unknown worker projection target");
+const claims = target === "worker-task-claims";
+const projectionPath = new URL(`../src/${target}/contract.json`, import.meta.url);
+const bindingPath = new URL(`../src/${target}/index.ts`, import.meta.url);
+const registrationOperations = [
   "registerCLIWorker",
   "listCLIWorkers",
   "showCLIWorker",
@@ -12,6 +15,30 @@ const operations = [
   "readCLIWorkerPolicy",
   "updateCLIWorkerPolicy",
 ];
+
+const claimCredentials = {
+  claimWorkerTask: "workerDeviceToken",
+  readWorkerTaskClaimReceipt: "workerDeviceToken",
+  renewWorkerTask: "workerDeviceToken",
+  readWorkerTaskRenewReceipt: "workerDeviceToken",
+  releaseWorkerTask: "workerRunToken",
+  readWorkerTaskReleaseReceipt: "workerDeviceToken",
+  finalizeWorkerTask: "workerRunToken",
+  readWorkerTaskFinalizeReceipt: "workerDeviceToken",
+  recoverWorkerTask: "developerAccessToken",
+  readWorkerTaskRecoverReceipt: "developerAccessToken",
+  reconcileWorkerTask: "developerAccessToken",
+  readWorkerTaskReconcileReceipt: "developerAccessToken",
+  issueWorkerTaskRunCredential: "workerDeviceToken",
+  readWorkerTaskRunCredential: "workerDeviceToken",
+} as const;
+const operations = claims ? Object.keys(claimCredentials) : registrationOperations;
+const authorities = {
+  developerAccessToken: "cli_oauth_grant",
+  workerDeviceToken: "registered_worker_device",
+  workerRunToken: "registered_worker_run",
+} as const;
+type Credential = keyof typeof authorities;
 
 type Schema = {
   $ref?: string;
@@ -46,6 +73,7 @@ type Projection = {
   audience: "private-cli";
   sources: Record<string, string>;
   bearerPrefix: string;
+  machineBearerPrefixes?: Record<"workerDeviceToken" | "workerRunToken", string>;
   paths: NonNullable<Fragment["paths"]>;
   components: Components;
 };
@@ -60,6 +88,18 @@ function verifyOperations(paths: Projection["paths"]) {
   const selected = rows(paths).map(({ operation }) => operation.operationId).sort();
   if (json(selected) !== json([...operations].sort())) throw new Error("Worker operation allowlist differs");
   for (const { path, operation, method } of rows(paths)) {
+    if (claims) {
+      const family = claimCredentials[operation.operationId as keyof typeof claimCredentials];
+      const prefix = "/api/v1/cli/worker-devices/{workspace_id}/{owner_id}/{device_id}/{worker_id}/task-claims/";
+      if (!path.startsWith(prefix) || method !== "post" || !family ||
+          json(operation.security) !== json([{ [family]: [] }]) ||
+          json(operation["x-assign-authority"].credentials) !== json([authorities[family]]) ||
+          operation["x-assign-authority"].client_selects_owner !== false ||
+          operation.requestBody?.["x-assign-max-bytes"] !== 16 * 1024) {
+        throw new Error(`Worker claim authority or limit differs for ${operation.operationId}`);
+      }
+      continue;
+    }
     if (!/^\/api\/v1\/cli\/workers(?:\/[-\w{}]+)*$/.test(path) || !["get", "post", "patch"].includes(method)) {
       throw new Error(`Unexpected CLI worker route ${method} ${path}`);
     }
@@ -79,15 +119,25 @@ function project(): Projection {
     sources[path] = sha(input);
     return input;
   };
-  const source = JSON.parse(read("assign-core/contracts/api/src/paths/worker-catalog.v1.json")) as Fragment;
+  const source = JSON.parse(read(`assign-core/contracts/api/src/paths/${claims ? target : "worker-catalog"}.v1.json`)) as Fragment;
   const core = read("assign-core/internal/cliauth/service.go");
   const bearerPrefix = /^\s*accessPrefix\s*=\s*"([a-z_]+)"/m.exec(core)?.[1];
   if (!bearerPrefix) throw new Error("Missing CLI access-token family");
-  const catalog = read("assign-core/internal/httpapi/worker_catalog.go");
+  const catalog = read(`assign-core/internal/httpapi/${claims ? "worker_task_claims" : "worker_catalog"}.go`);
+  const machine = claims ? read("assign-core/internal/mcpauth/worker_credentials.go") : "";
+  const devicePrefix = /^\s*workerDevicePrefix\s*=\s*"([a-z_]+)"/m.exec(machine)?.[1];
+  const runPrefix = /^\s*workerRunPrefix\s*=\s*"([a-z_]+)"/m.exec(machine)?.[1];
+  if (claims && (!devicePrefix || !runPrefix)) throw new Error("Missing Core worker credential family");
+
   const paths: Projection["paths"] = {};
   for (const { path, method, operation } of rows(source.paths ?? {})) {
     if (!operations.includes(operation.operationId)) continue;
-    if (operation.requestBody) {
+    if (claims) {
+      const action = path.split("/").at(-1);
+      if (!(catalog.includes(`"${action}"`) || catalog.includes(`"/${action}"`)) || !catalog.includes("decodeJSONBody(r, 16*1024, true,")) {
+        throw new Error(`Missing Core claim route or body limit for ${operation.operationId}`);
+      }
+    } else if (operation.requestBody) {
       const handler = { registerCLIWorker: "register", updateCLIWorkerPolicy: "updatePolicy" }[operation.operationId];
       const body = catalog.split(`func (routes *WorkerCatalogRoutes) ${handler}(`)[1]?.split("\nfunc ")[0];
       const cap = /decodeJSONBody\(r, (\d+)\*(\d+), true, /.exec(body ?? "");
@@ -141,8 +191,13 @@ function project(): Projection {
   if (scheme?.type !== "http" || scheme.scheme !== "bearer") throw new Error("Missing Core bearer security scheme");
   components.securitySchemes = {
     developerAccessToken: { type: scheme.type, scheme: scheme.scheme, bearerFormat: "Assign CLI OAuth access token" },
+    ...(claims ? source.components?.securitySchemes : {}),
   };
-  return { audience: "private-cli", sources, bearerPrefix, paths, components };
+  return {
+    audience: "private-cli", sources, bearerPrefix,
+    ...(devicePrefix && runPrefix ? { machineBearerPrefixes: { workerDeviceToken: devicePrefix, workerRunToken: runPrefix } } : {}),
+    paths, components,
+  };
 }
 
 function schemaType(schema: Schema): string {
@@ -186,17 +241,21 @@ function schemaType(schema: Schema): string {
 }
 
 function generate(projection: Projection): string {
+  const credentials = claims ? Object.keys(authorities) : ["developerAccessToken"];
   if (projection.audience !== "private-cli" ||
-      json(Object.keys(projection.components.securitySchemes ?? {})) !== json(["developerAccessToken"])) {
+      json(Object.keys(projection.components.securitySchemes ?? {})) !== json(credentials) ||
+      (claims && !projection.machineBearerPrefixes)) {
     throw new Error("Private CLI projection required");
   }
   verifyOperations(projection.paths);
+  const name = claims ? "WorkerTaskClaims" : "WorkerRegistration";
+  const requestModule = claims ? "../worker-registration/request.ts" : "./request.ts";
   const lines = [
     "// Generated by command/scripts/generate-worker-registration.ts. Do not edit.",
-    'import { createWorkerRequest } from "./request.ts";',
-    'import type { WorkerTransport } from "./request.ts";',
+    `import { createWorkerRequest } from "${requestModule}";`,
+    `import type { WorkerTransport } from "${requestModule}";`,
     "",
-    `export const workerRegistrationIdentity = {`,
+    `export const ${claims ? "workerTaskClaimsIdentity" : "workerRegistrationIdentity"} = {`,
     `  audience: "private-cli",`,
     `  projectionSHA256: "${sha(json(projection))}",`,
     `  generatorSHA256: "${sha(readFileSync(new URL(import.meta.url), "utf8"))}",`,
@@ -205,13 +264,13 @@ function generate(projection: Projection): string {
   ];
   const schemas = projection.components.schemas as Record<string, Schema>;
   for (const [name, schema] of Object.entries(schemas)) lines.push(`export type ${name} = ${schemaType(schema)};`);
-  lines.push("", "export interface WorkerRegistrationSuccess {");
+  lines.push("", `export interface ${name}Success {`);
   for (const { operation } of rows(projection.paths)) {
     const response = operation.responses["200"];
     if (!response || !("content" in response)) throw new Error("Missing JSON success response");
     lines.push(`  ${operation.operationId}: ${schemaType(response.content["application/json"]!.schema)};`);
   }
-  lines.push("}", "", "export interface WorkerRegistrationProblems {");
+  lines.push("}", "", `export interface ${name}Problems {`);
   for (const { operation } of rows(projection.paths)) {
     lines.push(`  ${operation.operationId}: {`);
     for (const [status, entry] of Object.entries(operation.responses)) {
@@ -223,8 +282,22 @@ function generate(projection: Projection): string {
     }
     lines.push("  };");
   }
-  lines.push("}", "", "export function createWorkerRegistrationClient(transport: WorkerTransport) {",
-    `  const request = createWorkerRequest(transport, ${JSON.stringify(projection.bearerPrefix)});`, "  return {");
+  lines.push("}", "");
+  if (claims) {
+    lines.push("export type WorkerTaskClaimTransport = Omit<WorkerTransport, \"accessToken\"> & {",
+      ...credentials.map(key => `  ${key}?: WorkerTransport["accessToken"];`), "};", "",
+      "export function createWorkerTaskClaimsClient(transport: WorkerTaskClaimTransport) {");
+    const prefixes = { developerAccessToken: projection.bearerPrefix, ...projection.machineBearerPrefixes };
+    for (const [key, prefix] of Object.entries(prefixes)) {
+      lines.push(`  const ${key} = createWorkerRequest({ ...transport, accessToken: async () => {`,
+        `    if (!transport.${key}) throw new TypeError("Missing worker credential for this operation");`,
+        `    return transport.${key}();`, `  } }, ${JSON.stringify(prefix)}, "the bound credential for this operation");`);
+    }
+  } else {
+    lines.push("export function createWorkerRegistrationClient(transport: WorkerTransport) {",
+      `  const request = createWorkerRequest(transport, ${JSON.stringify(projection.bearerPrefix)});`);
+  }
+  lines.push("  return {");
   for (const { path, method, operation } of rows(projection.paths)) {
     const parameters = operation.parameters ?? [];
     const fields = parameters.map(parameter =>
@@ -254,7 +327,8 @@ function generate(projection: Projection): string {
       }
     }
     if (body && !Number.isSafeInteger(body["x-assign-max-bytes"])) throw new Error("Missing canonical body limit");
-    lines.push(`      return request("${method.toUpperCase()}", \`${url}\`, signal${query.length ? ", { query }" :
+    const request = claims ? Object.keys(operation.security[0]!)[0] as Credential : "request";
+    lines.push(`      return ${request}("${method.toUpperCase()}", \`${url}\`, signal${query.length ? ", { query }" :
       body ? `, { body: input.body, maxBytes: ${body["x-assign-max-bytes"]} }` : ""});`, "    },");
   }
   lines.push("  };", "}", "", "function pathSegment(value: string): string {",

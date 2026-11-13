@@ -300,3 +300,21 @@ mutual exclusion and version flags. `fixtures/shell-harness.py` runs the same
 cases against a supplied native candidate and records its hash; it also checks
 completion scripts and quoted Unicode argv. Native platform qualification
 remains with the native packet and release owners.
+
+
+## Private worker Task receipts
+
+The private `src/worker-task-claims` client is generated from Core's v1
+OpenAPI fragment. The `operations.ts` adapter maps HTTP and transport
+failures to CLI exit statuses and carries the original operation ID through
+recovery. The worker supervisor persists the exact intent before calling
+`apply`. After an uncertain result, call that operation's `reconcile` with
+the saved input. A missing receipt requires reconciliation of the Task, run
+and local process before recovery. Keep active tokens and receipts private.
+
+Use `bun scripts/generate-worker-registration.ts project worker-task-claims`
+from this directory to refresh the projection from the workspace. Use
+`generate worker-task-claims` to regenerate the binding. The matching
+`check-source worker-task-claims` and `check worker-task-claims` modes check
+the source and binding. The prepared `fixtures/worker-task-claims.test.ts`
+selector runs in CW-07.
