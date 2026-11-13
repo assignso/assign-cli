@@ -94,7 +94,16 @@ export async function loadHost(path: string): Promise<string | undefined> {
 
 export async function saveHost(path: string, input: string, replace = rename): Promise<void> {
   const host = validateHost(input);
-  await checkFile(path);
+  await atomicWrite(path, JSON.stringify({ schema: 1, host }) + "\n", replace);
+}
+
+export async function atomicWrite(path: string, contents: string, replace = rename, sizeLimit = maxSettingsSize): Promise<void> {
+  try {
+    const info = await lstat(path);
+    if (!info.isFile() || (process.platform !== "win32" && (info.mode & 0o077)) || info.size > sizeLimit) {
+      throw new CommandFailure(privateSettingsError, 2);
+    }
+  } catch (error) { if (!hasCode(error, "ENOENT")) throw error; }
   const directory = dirname(path);
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const temporary = await mkdtemp(join(directory, ".settings-"));
@@ -102,7 +111,7 @@ export async function saveHost(path: string, input: string, replace = rename): P
   try {
     const file = await open(source, "wx", 0o600);
     try {
-      await file.writeFile(JSON.stringify({ schema: 1, host }) + "\n");
+      await file.writeFile(contents);
       await file.sync();
     } finally {
       await file.close();
