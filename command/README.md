@@ -58,6 +58,37 @@ ASSIGN_TEST_SDK_SOURCE=/absolute/path/to/pinned-sdk-export bun test fixtures/tra
 
 The default SDK policy retries reads only. Supply a retry classification only from the canonical operation owner; the SDK retains the original key/body/preconditions. No credential refresh or operation resubmission is implicit. Negotiated capability metadata still needs a canonical producer contract; HTTP error handling alone does not establish that negotiation. Public SDK package/export approval and distribution remain separate from these private candidate checks.
 
+## Private worker registration binding
+
+Import `createWorkerRegistrationClient` from `src/worker-registration/index.ts`.
+It exposes registration, list, show, receipt recovery, policy read and policy
+update (including pause, resume and profile revocation). Supply the selected
+HTTPS API origin, an interactive Assign CLI OAuth token callback and an optional
+fetch implementation. Methods return raw responses. The module exports success
+and problem types by operation and keeps HTTP status and Retry-After available
+to the caller. Preserve the original enrollment/profile intents for receipt
+reconciliation and use the saved revision for each new policy edit. Core owns
+authorization, schema validation and the owner quota.
+
+Run these commands in `command/` with Bun 1.4.3:
+
+```sh
+# Generate from the checked CLI-targeted input, with no sibling checkouts
+bun scripts/generate-worker-registration.ts generate
+bun scripts/generate-worker-registration.ts check
+bun test fixtures/worker-registration.test.ts
+
+# Refresh the approved projection from the owning workspace sources
+bun scripts/generate-worker-registration.ts project
+bun scripts/generate-worker-registration.ts check-source
+```
+
+The projection records source file digests. The generated module records the
+projection and generator digests. Keep the projection, generator and binding in
+the private candidate. The public export requires independent approval. The
+standalone device credential lifecycle currently has Core service methods and
+requires a canonical CLI transport before a client can call it.
+
 ## macOS credential adapter (internal candidate)
 
 `src/credentials-macos.ts` provides read/write/delete via the pinned Bun 1.4.3
