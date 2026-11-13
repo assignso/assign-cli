@@ -8,7 +8,7 @@ test.each([[["help"]], [["--help"]], [["help", "config"]]])("%j displays help an
   const stderr = new PassThrough();
   const exit = await runCommand(args, { stdin: Readable.from([]), stdout, stderr });
   expect(exit).toBe(0);
-  expect(stdout.read()?.toString()).toContain("Usage: assign");
+  expect(stdout.read()?.toString()).toContain("Usage:\n  assign");
   expect(stderr.read()).toBeNull();
 });
 

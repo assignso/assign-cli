@@ -49,18 +49,21 @@ class PacketTests(unittest.TestCase):
                     if '--candidate-only' in command:
                         Path(command[command.index('--receipt') + 1]).write_text(json.dumps(
                             {'network_denied': True, 'cases': [{'case': 'prepared'}]}))
-                    output = 'credential adapter compiled fixture passed\n' if len(calls) == 4 else 'prepared\n'
+                    if 'version' in command and command[-1] != 'version':
+                        diagnostic = 'assign: unknown argument ' + json.dumps(command[-1], ensure_ascii=False) + ' for "assign version"\n'
+                        return subprocess.CompletedProcess(command, 2, '', diagnostic)
+                    output = 'credential adapter compiled fixture passed\n' if command[-1] == str(binary.resolve()) else 'prepared\n'
                     return subprocess.CompletedProcess(command, 0, output, '')
                 with patch.object(sys, 'argv', argv), patch.object(packet.platform, 'system', return_value='Darwin'), \
                      patch.object(packet.platform, 'machine', return_value='arm64'), \
                      patch.object(sys, 'platform', 'darwin'), patch.object(packet.subprocess, 'run', side_effect=run):
-                    self.assertEqual(packet.main(), expected)
+                    self.assertEqual(packet.main(), expected, receipt.read_text())
                 result = json.loads(receipt.read_text())
                 self.assertFalse(result['native_qualification'])
                 self.assertEqual(result['packet_passed'], expected == 0)
                 if expected == 0:
-                    self.assertEqual(len(result['assertions']), 5)
-                    self.assertEqual(len(calls), 5)
+                    self.assertEqual(len(result['assertions']), 10)
+                    self.assertEqual(len(calls), 10)
 
 
 if __name__ == '__main__':

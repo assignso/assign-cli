@@ -248,3 +248,24 @@ Orchestrator development check: `python3 fixtures/native-packet.test.py`.
 Output projection (`CLI-TS-14`): `src/output.ts` owns compact deterministic Go-compatible JSON, scalar/list streams, terminal control/bidi sanitation and the 65,536-code-point Document excerpt. `src/richtext.ts` consumes canonical JSON without an editor model or browser dependency; unknown nodes/marks fail explicitly. Simple tables become GFM; complex tables retain compact lexical JSON in an inert `assign-table` fence. Code fences grow around embedded backticks. Output never adds ANSI or pads Unicode labels by UTF-16 length.
 
 Run `bun test fixtures/output.test.ts fixtures/command.test.ts` and `bun run typecheck`. `node ../scripts/generate-command-richtext.mjs --check` checks the frozen CLI generated Core source hashes and generated projection limits. Deliberate source upgrades use the existing canonical generator first, then this generator and Go differential fixtures. Recreate the offline oracle from the CLI root with `go run ./command/fixtures/go-output > command/fixtures/richtext-go.json`; the checked fixture pins exact canonical values independently of JavaScript object insertion order. No API call or private application import is involved.
+
+### Frozen shell grammar
+
+`src/shell-contract.json` captures the retained Go registration tree, positional
+arity errors, help, aliases and Bash/Zsh/Fish scripts. Regenerate from the CLI
+repository (constructors only; no remote actions):
+
+```sh
+ASSIGN_SHELL_SNAPSHOT=../../command/src/shell-contract.json go test ./internal/cli -run '^TestShellSnapshot$' -count=1
+```
+
+`src/shell.ts` consumes this snapshot without loading credentials, Discuss or Go.
+Command actions continue to belong to their individual port cohorts. The shell
+selector is `bun test fixtures/shell.test.ts fixtures/command.test.ts fixtures/config.test.ts`.
+The native packet includes shell generation and an argv case containing spaces,
+quotes, backslashes and Unicode; execution on Windows retains its native owner.
+The frozen negative cases cover arity, unknown/ambiguous words, typed flags,
+mutual exclusion and version flags. `fixtures/shell-harness.py` runs the same
+cases against a supplied native candidate and records its hash; it also checks
+completion scripts and quoted Unicode argv. Native platform qualification
+remains with the native packet and release owners.

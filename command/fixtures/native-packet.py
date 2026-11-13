@@ -72,11 +72,19 @@ def main():
                                       capture_output=True, text=True, timeout=120, check=True)
             run([sys.executable, '-c', NETWORK_PROBE])
             receipt['assertions'].append('IPv4 and IPv6 denied')
-            for argv in (['version'], ['--help']):
+            for argv in (['version'], ['--help'], ['help', 'task', 'show'], ['completions', 'bash'], ['completion', 'zsh'], ['completion', 'fish']):
                 result = run([binaries['ordinary'], *argv])
                 if not result.stdout.strip() or result.stderr:
                     raise AssertionError('ordinary startup output missing or stderr nonempty')
                 receipt['assertions'].append('ordinary ' + ' '.join(argv))
+            # An argv array preserves spaces, quotes, backslashes and Unicode on native Windows.
+            title = 'quoted "title" \\ path 日本語'
+            quoted = subprocess.run([*prefix, str(binaries['ordinary']), 'version', title],
+                                    cwd=home, env=env, capture_output=True, text=True, timeout=15)
+            expected = 'assign: unknown argument ' + json.dumps(title, ensure_ascii=False) + ' for "assign version"\n'
+            if quoted.returncode != 2 or quoted.stdout or quoted.stderr != expected:
+                raise AssertionError('native argv quoting or diagnostic normalization differs')
+            receipt['assertions'].append('native argv spaces/quotes/backslashes/Unicode and exit 2')
             result = run([binaries['vault_fixture']])
             if result.stdout.strip() != 'credential adapter compiled fixture passed':
                 raise AssertionError('dummy vault fixture did not complete')

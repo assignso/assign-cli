@@ -52,6 +52,12 @@ export async function runCommand(
       return 0;
     }
 
+    const { shellDispatch, registerShellGrammar } = await import("./shell.ts");
+    if (!register) {
+      const result = await shellDispatch(args, io, versionText);
+      if (result.handled) return 0;
+      args = result.args;
+    }
     const { Command } = await import("commander");
     const program = new Command();
     program.name("assign").description("Work with Assign from the terminal");
@@ -69,6 +75,7 @@ export async function runCommand(
       if (host !== undefined) validateHost(host);
     });
     registerConfig(program, io);
+    if (!register) registerShellGrammar(program);
     register?.(program, io);
     await program.parseAsync(args, { from: "user" });
     return 0;
@@ -88,7 +95,13 @@ export async function runCommand(
   }
 }
 
+let interruptInstalled = false;
+
 export function processIO(): CommandIO {
+  if (!interruptInstalled) {
+    interruptInstalled = true;
+    process.once("SIGINT", () => process.exit(130));
+  }
   // A write failure is also emitted as an event. The write callback owns the exit decision.
   process.stdout.on("error", () => {});
   process.stderr.on("error", () => {});
