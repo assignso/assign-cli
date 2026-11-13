@@ -3,7 +3,7 @@ import { constants } from "node:fs";
 import { lstat, mkdir, mkdtemp, open, rename, rm, unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, posix, win32 } from "node:path";
-import { CommandFailure, writeOutput } from "./main.ts";
+import { CommandFailure, writeStdout } from "./main.ts";
 import type { CommandIO } from "./main.ts";
 
 const defaultHost = "https://api.assign.so";
@@ -130,7 +130,7 @@ export function registerConfig(program: Command, io: CommandIO) {
     const stored = flag === undefined ? await loadHost(current()) : undefined;
     const host = flag === undefined ? stored ?? defaultHost : validateHost(flag);
     const source = flag !== undefined ? "flag" : stored === undefined ? "default" : "stored";
-    await writeOutput(io.stdout, "API host: " + host + "\nHost source: " + source + "\n");
+    await writeStdout(io, "API host: " + host + "\nHost source: " + source + "\n");
   };
   const config = program.command("config").description("Inspect and change local CLI settings").action(show);
   config.command("show").description("Show the effective API host without credentials").action(show);
@@ -139,12 +139,12 @@ export function registerConfig(program: Command, io: CommandIO) {
     validateHost(host);
     try { await saveHost(current(), host); }
     catch { throw new CommandFailure("could not save CLI settings", 1); }
-    await writeOutput(io.stdout, "API host saved\n");
+    await writeStdout(io, "API host saved\n");
   });
   config.command("unset").argument("<setting>").action(async (setting: string) => {
     if (setting !== "host") throw new CommandFailure("only the host setting is supported", 2);
     try { await resetHost(current()); }
     catch { throw new CommandFailure("could not reset CLI settings", 1); }
-    await writeOutput(io.stdout, "API host reset\n");
+    await writeStdout(io, "API host reset\n");
   });
 }

@@ -17,6 +17,8 @@ export class CommandFailure extends Error {
   }
 }
 
+class StdoutClosed extends Error {}
+
 export function writeOutput(stream: Writable, text: string): Promise<void> {
   return new Promise((resolve, reject) => {
     stream.write(text, error => error ? reject(error) : resolve());
@@ -25,6 +27,15 @@ export function writeOutput(stream: Writable, text: string): Promise<void> {
 
 function isBrokenPipe(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "EPIPE";
+}
+
+export async function writeStdout(io: CommandIO, text: string): Promise<void> {
+  try {
+    await writeOutput(io.stdout, text);
+  } catch (error) {
+    if (isBrokenPipe(error)) throw new StdoutClosed("stdout closed", { cause: error });
+    throw error;
+  }
 }
 
 export async function runCommand(
@@ -37,7 +48,7 @@ export async function runCommand(
   // Keep the version path independent of the parser and command modules.
   try {
     if (args.length === 1 && (args[0] === "version" || args[0] === "v")) {
-      await writeOutput(io.stdout, versionText);
+      await writeStdout(io, versionText);
       return 0;
     }
 
@@ -50,28 +61,29 @@ export async function runCommand(
       outputError: (message, write) => write(`assign: ${message.replace(/^error: /, "")}`),
     });
     program.command("version").alias("v").description("Print version and build information")
-      .action(() => writeOutput(io.stdout, versionText));
-    if (register) {
-      register(program, io);
-    } else {
-      const { registerConfig, validateHost } = await import("./config.ts");
-      program.option("--host <https-origin>", "Assign API host for this command");
-      program.hook("preAction", () => {
-        const host = program.opts<{ host?: string }>().host;
-        if (host !== undefined) validateHost(host);
-      });
-      registerConfig(program, io);
-    }
+      .action(() => writeStdout(io, versionText));
+    const { registerConfig, validateHost } = await import("./config.ts");
+    program.option("--host <https-origin>", "Assign API host for this command");
+    program.hook("preAction", () => {
+      const host = program.opts<{ host?: string }>().host;
+      if (host !== undefined) validateHost(host);
+    });
+    registerConfig(program, io);
+    register?.(program, io);
     await program.parseAsync(args, { from: "user" });
     return 0;
   } catch (error) {
-    if (isBrokenPipe(error)) return 0;
+    if (error instanceof StdoutClosed) return 0;
     if (error instanceof Error && "code" in error && typeof error.code === "string" &&
         error.code.startsWith("commander.")) {
       return "exitCode" in error && error.exitCode === 0 ? 0 : 2;
     }
     const failure = error instanceof CommandFailure ? error : new CommandFailure("command failed", 1);
-    await writeOutput(io.stderr, `assign: ${failure.message}\n`);
+    try {
+      await writeOutput(io.stderr, `assign: ${failure.message}\n`);
+    } catch (writeError) {
+      if (!isBrokenPipe(writeError)) throw writeError;
+    }
     return failure.exitCode;
   }
 }

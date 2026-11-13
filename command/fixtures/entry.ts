@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import { Writable } from "node:stream";
-import { CommandFailure, processIO, runCommand, writeOutput } from "../src/main.ts";
+import { CommandFailure, processIO, runCommand, writeOutput, writeStdout } from "../src/main.ts";
 import type { CommandIO } from "../src/main.ts";
 import { fixtureToken, loadFixture } from "./transport.ts";
 
@@ -65,7 +65,7 @@ export async function runFixture(readTaskPage?: TaskPageReader) {
             BigInt(row.revision) > 9223372036854775807n) {
           throw new CommandFailure("Task response is incomplete", 1);
         }
-        await writeOutput(streams.stdout, row.revision + "\n");
+        await writeStdout(streams, row.revision + "\n");
       });
     program.command("start").argument("<code>").requiredOption("--task-id <id>")
       .requiredOption("--if-match <tag>").requiredOption("--idempotency-key <key>")
@@ -87,7 +87,7 @@ export async function runFixture(readTaskPage?: TaskPageReader) {
       });
     const child = program.command("__fixture", { hidden: true });
     child.command("wait").action(async () => {
-      await writeOutput(streams.stdout, "ready\n");
+      await writeStdout(streams, "ready\n");
       for await (const _chunk of streams.stdin) {
         break;
       }
@@ -101,7 +101,7 @@ export async function runFixture(readTaskPage?: TaskPageReader) {
         if (length > 4096) throw new CommandFailure("fixture input exceeds limit", 2);
         chunks.push(bytes);
       }
-      await writeOutput(streams.stdout, Buffer.concat(chunks).toString("utf8"));
+      await writeStdout(streams, Buffer.concat(chunks).toString("utf8"));
     });
   }
 
