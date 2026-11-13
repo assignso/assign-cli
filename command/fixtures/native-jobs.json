@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "automatic_provisioning": false,
+  "jobs": [
+    {"id":"macos-arm64","system":"Darwin","machine":"arm64","requires":["native arm64 Bun and Python","sandbox-exec network denial","ad-hoc signing for separate App Sandbox qualification"]},
+    {"id":"macos-x64","system":"Darwin","machine":"x86_64","requires":["native x64 Bun and Python","minimum supported macOS","sandbox-exec network denial"]},
+    {"id":"linux-x64","system":"Linux","machine":"x86_64","requires":["native x64 Bun and Python","libsecret development headers and C11 compiler","native deny-network wrapper denying IPv4 and IPv6"]},
+    {"id":"linux-arm64","system":"Linux","machine":"aarch64","requires":["native arm64 Bun and Python","libsecret development headers and C11 compiler","native deny-network wrapper denying IPv4 and IPv6"]},
+    {"id":"windows-x64","system":"Windows","machine":"AMD64","requires":["native x64 Bun and Python","Windows SDK and MSVC x64","native deny-network wrapper denying IPv4 and IPv6","approved native .exe inputs; no cmd shims"]},
+    {"id":"windows-arm64","system":"Windows","machine":"ARM64","requires":["native arm64 Bun and Python","Windows SDK and MSVC arm64","native deny-network wrapper denying IPv4 and IPv6","approved native .exe inputs; no cmd shims"]}
+  ]
+}

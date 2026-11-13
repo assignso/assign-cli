@@ -204,3 +204,43 @@ claimed by local fixtures.
 Sources: [Microsoft CredWriteW](https://learn.microsoft.com/en-us/windows/win32/api/wincred/nf-wincred-credwritew),
 [Go adapter v0.2.8](https://github.com/zalando/go-keyring/blob/v0.2.8/keyring_windows.go),
 and the workspace native feasibility packet's Existing credential identities section.
+
+## Native feasibility jobs (2042)
+
+`fixtures/native-jobs.json` defines six individually scheduled native host jobs.
+It is preparation only: no workflow automatically allocates a paid runner. On each
+host build ordinary and credential fixtures with the pinned Bun, stage the SDK
+with `scripts/stage-sdk-fixture.py`, then run:
+
+```sh
+python3 fixtures/native-packet.py --job macos-arm64 --execution native \
+  --ordinary dist/assign --vault-fixture dist/assign-credential-fixture \
+  --sdk-fixture /path/to/sdk-stage/candidate/dist/assign-sdk-fixture \
+  --sdk-identity /path/to/sdk-stage/sdk-identity.json \
+  --scratch /path/to/scratch --receipt /path/to/packet.json
+```
+
+Build the dummy credential fixture with `bun scripts/build.ts --credential-fixture`.
+It injects a documented in-memory vault transport and performs save/load/delete/
+absent assertions; it never opens the user's vault. This is compiled adapter
+feasibility evidence, not native secure-store or renderer denial qualification.
+The SDK binary uses prepared fetch responses, never a provider transport.
+
+Linux and Windows must additionally supply `--deny-network` as a JSON argv array
+whose first element is the absolute approved native wrapper executable. The
+wrapper must deny all descendant network access; IPv4/IPv6 negative controls run
+before any fixture. Windows inputs must resolve to approved `.exe` files; `.cmd`
+and `.bat` shims fail. No vendor executable is invoked by this packet. Vendor
+sandbox, authentication and coding behavior remain unverified. Installer/launcher
+and shim-to-native resolution cases remain with 1983.
+
+Record `--execution emulated` when applicable; a passing emulated packet cannot
+close a native host gate. For missing hosts use `--execution unavailable` with
+scratch/receipt paths: it emits a failing receipt, never a skip/pass. Operator
+attestation must include the actual host architecture (including Rosetta/WOW
+emulation) and source/toolchain identities beside the hashed-binary receipt.
+The runner records OS/release, machine, input hashes, SDK identity and assertions;
+the adjacent `.commands.json` records individual prepared command results.
+No aggregate six-target qualification is implied by one packet passing.
+
+Orchestrator development check: `python3 fixtures/native-packet.test.py`.
