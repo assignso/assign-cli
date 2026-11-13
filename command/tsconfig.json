@@ -10,5 +10,5 @@
     "verbatimModuleSyntax": true,
     "types": ["bun"]
   },
-  "include": ["src/**/*.ts", "scripts/**/*.ts", "fixtures/entry.ts", "fixtures/transport.ts", "fixtures/*.test.ts"]
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "fixtures/entry.ts", "fixtures/credentials-entry.ts", "fixtures/transport.ts", "fixtures/*.test.ts"]
 }

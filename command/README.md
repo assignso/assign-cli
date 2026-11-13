@@ -15,7 +15,7 @@ The configuration adapter uses the existing Go schema-1 settings file: `--host` 
 
 The Project context adapter reads and atomically updates the Go schema-1 `projects` map, keyed by HTTPS host, newline and credential-bound Workspace. Updating one selection preserves the other partitions. `ASSIGN_CONTEXT_FILE` overrides its location independently of settings. Default files live under `assign/` in APPDATA on Windows, `~/Library/Application Support` on macOS, or XDG_CONFIG_HOME / `~/.config` on Linux. Paths use native APIs, including drive letters, spaces and Unicode. These adapters accept only host/Workspace/Project inputs; credentials remain in the OS vault. Resource commands must obtain the authorized Workspace before saving a hint; a hint grants no permission.
 
-Rollback: stop using the candidate and run the retained Go binary/release from `assignso/assign-cli` with the same `ASSIGN_CONFIG_FILE` and `ASSIGN_CONTEXT_FILE` overrides (or unchanged default directories). No migration or copy is required: settings stay schema 1 and context stays `{schema:1,projects:{"<host>\n<workspace>":"<project>"}}`. The TypeScript candidate never modifies the Go binary or credential vault. Do not delete context to roll back. Settings intentionally reject unrelated fields (including tokens); unrelated context partition keys are preserved. Native Windows filesystem/ACL qualification remains owned by the rewrite platform gate; local path-shape tests do not prove native ACL behavior.
+Rollback: stop using the candidate and run the retained Go binary/release from `assignso/assign-cli` with the same `ASSIGN_CONFIG_FILE` and `ASSIGN_CONTEXT_FILE` overrides (or unchanged default directories). No migration or copy is required: settings stay schema 1 and context stays `{schema:1,projects:{"<host>\n<workspace>":"<project>"}}`. The configuration/context adapters never modify the Go binary or credential vault. Do not delete context to roll back. Settings intentionally reject unrelated fields (including tokens); unrelated context partition keys are preserved. Native Windows filesystem/ACL qualification remains owned by the rewrite platform gate; local path-shape tests do not prove native ACL behavior.
 
 ## Prepared verification
 
@@ -57,3 +57,64 @@ ASSIGN_TEST_SDK_SOURCE=/absolute/path/to/pinned-sdk-export bun test fixtures/tra
 `src/transport.ts` accepts the public SDK recovery binding at composition time. Use its configuration with the SDK Configuration constructor, call raw operations, and decode with an operation-owned byte limit before validating the complete result and writing output. Cursor traversal remains the SDK's `iteratePages`; pass its signal through each raw request. Wrap the whole request/decode/validation operation with `sdkResult` and the caller's signal. Numeric tokens outside the safe range fail; decimal strings retain their exact spelling. Integer-valued fraction/exponent tokens are conservatively rejected to avoid rounding fractional revisions into integers. Generated model conversion must follow this boundary, never precede it.
 
 The default SDK policy retries reads only. Supply a retry classification only from the canonical operation owner; the SDK retains the original key/body/preconditions. No credential refresh or operation resubmission is implicit. Negotiated capability metadata still needs a canonical producer contract; HTTP error handling alone does not establish that negotiation. Public SDK package/export approval and distribution remain separate from these private candidate checks.
+
+## macOS credential adapter (internal candidate)
+
+`src/credentials-macos.ts` provides read/write/delete via the pinned Bun 1.4.3
+`secrets` API. The `MacOSSecrets` port allows fixtures without native access;
+`nativeMacOSCredentialStore()` lazily binds that API on macOS only. The caller
+must validate/select the host and run this code only in the credential-owning
+process. Do not import it into the renderer. It adds no login command, IPC
+route, environment override or plaintext fallback.
+
+The service is `Assign CLI`; the account is the exact host string, unchanged
+from Go. The stored JSON uses schema 1, `access_token`, `refresh_token`, and
+RFC3339 `expires_at`, preserving subsecond text. Workspace binding remains an
+authentication-layer responsibility; this adapter cannot broaden a grant.
+Missing reads produce `not-found`; missing deletes succeed. Corrupt data produces
+`invalid`. Native failures (including locked, denied and unavailable stores)
+produce a fixed `unavailable` error without native messages or causes. Callers
+must never log successful values. Operations use memory/native APIs, never shell
+commands, arguments, environment credentials or configuration files.
+
+The dependency decision is to reuse the runtime, with no added native addon,
+FFI ABI, dynamic library or package install hook. The installed 1.4.3 Bun types
+expose the exact get/set/delete signatures, and the compiled probe verifies the
+native binding is present. [Bun's official secrets documentation](https://bun.com/docs/runtime/secrets)
+describes macOS Keychain Services, service/name keys and potential first-use
+permission prompts. The API is experimental; retain the exact runtime pin and
+repeat qualification before upgrading. Documentation for newer Bun versions
+does not establish compatibility of a new runtime.
+
+Deterministic checks from `command/`:
+
+```sh
+bun run typecheck
+bun test fixtures/credentials.test.ts
+bun scripts/build.ts --credential-fixture
+./dist/assign-credential-fixture
+```
+
+The compiled probe binds the real API without invoking it, then performs all
+operations on injected prepared storage. It emits only a fixed success line.
+These checks prove compilation and adapter behavior, not native vault access.
+
+Native qualification (2043; installed signing 1811 and migration 1987) must record
+macOS version/architecture/minimum supported OS, Bun revision, artifact hash,
+`codesign -dv --verbose=4` identifier/team/requirements/entitlements for the
+credential helper and renderer launcher, and the installed path. Local compiled
+probes use ad-hoc signatures, not a Developer ID identity. Bun alone is not the
+renderer isolation boundary: the selected App Sandbox launcher, separate native
+credential identity and authenticated private broker must prevent the renderer
+from invoking this adapter or reading its items/files/helper. Integrate this port
+inside that credential owner before release; the factory alone grants no isolation.
+
+Using a disposable test account/keychain and dummy credentials, qualify create,
+read, update, delete, missing, denied access, locked store, unavailable store and
+existing Go-item compatibility. Record each outcome and whether macOS prompts on
+first access, unlock, denial/cancellation, identity or install-path changes. Do
+not assume silent access, auto-approve prompts, change the user's search list or
+inspect saved user credentials. Confirm denial does not trigger a plaintext
+fallback. Record item cleanup and restored test state. Native access controls,
+Data Protection Keychain choice, installed signing/notarization, migration and
+the full platform/process matrix remain unverified by the prepared fixtures.

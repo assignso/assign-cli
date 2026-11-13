@@ -4,7 +4,7 @@ if (Bun.version !== "1.4.3" || Bun.revision !== "c6da4a4d3010e5553438c60f6bd76d9
   throw new Error("Use Bun 1.4.3+c6da4a4d3 to build the CLI candidate");
 }
 const option = process.argv[2];
-if (process.argv.length > 3 || (option !== undefined && option !== "--fixture" && option !== "--sdk-fixture")) {
+if (process.argv.length > 3 || (option !== undefined && option !== "--fixture" && option !== "--sdk-fixture" && option !== "--credential-fixture")) {
   throw new Error("Unsupported build option");
 }
 const identity = {
@@ -16,9 +16,9 @@ if (Object.values(identity).some(value => !/^[!-~]{1,128}$/.test(value))) {
   throw new Error("Invalid CLI build identity");
 }
 const suffix = process.platform === "win32" ? ".exe" : "";
-const entry = option === "--sdk-fixture" ? "fixtures/sdk-entry.ts" :
+const entry = option === "--credential-fixture" ? "fixtures/credentials-entry.ts" : option === "--sdk-fixture" ? "fixtures/sdk-entry.ts" :
   option === "--fixture" ? "fixtures/entry.ts" : "src/entry.ts";
-const output = option === "--sdk-fixture" ? "assign-sdk-fixture" : option === "--fixture" ? "assign-fixture" : "assign";
+const output = option === "--credential-fixture" ? "assign-credential-fixture" : option === "--sdk-fixture" ? "assign-sdk-fixture" : option === "--fixture" ? "assign-fixture" : "assign";
 mkdirSync("dist", { recursive: true });
 const build = Bun.spawnSync([
   process.execPath, "build", entry,
