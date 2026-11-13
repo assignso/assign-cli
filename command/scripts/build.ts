@@ -27,3 +27,13 @@ const build = Bun.spawnSync([
   "--outfile", `dist/${output}${suffix}`,
 ], { stdout: "inherit", stderr: "inherit" });
 process.exitCode = build.exitCode;
+
+// Linux packages must ship this private executable beside the compiled command.
+if (build.exitCode === 0 && process.platform === "linux") {
+  const flags = Bun.spawnSync(["pkg-config", "--cflags", "--libs", "libsecret-1"], {stderr: "inherit"});
+  if (flags.exitCode !== 0) throw new Error("Linux builds require libsecret-1 development files and pkg-config");
+  const native = Bun.spawnSync(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-O2",
+    "native/secret-service.c", "-o", "dist/assign-secret-service",
+    ...flags.stdout.toString().trim().split(/\s+/)], {stdout: "inherit", stderr: "inherit"});
+  if (native.exitCode !== 0) throw new Error("Linux credential helper compilation failed");
+}

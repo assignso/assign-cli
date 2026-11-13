@@ -118,3 +118,43 @@ inspect saved user credentials. Confirm denial does not trigger a plaintext
 fallback. Record item cleanup and restored test state. Native access controls,
 Data Protection Keychain choice, installed signing/notarization, migration and
 the full platform/process matrix remain unverified by the prepared fixtures.
+
+## Linux credential adapter (internal candidate)
+
+`src/credentials-linux.ts` uses the private `native/secret-service.c` libsecret
+transport. Unlike Bun.secrets, it queries the existing Go attributes `service=Assign CLI`
+and `username=<exact host>` without matching a new schema name. Schema-1 JSON and
+host partitions reuse the existing codec. Only the credential-owning process may
+instantiate it. Pass the absolute packaged helper path to
+`nativeLinuxCredentialStore`; do not resolve it through PATH or expose it to the renderer.
+
+Linux builds require a C11 compiler, pkg-config and libsecret-1 development headers.
+The build script compiles `dist/assign-secret-service`; Linux archives/installers
+must include this executable beside the command, owned and writable only by the
+same trusted installer/user as the command. Runtime requires libsecret-1.so.0 and
+its GLib/GIO dependencies, a reachable user D-Bus session bus, an implementation of
+org.freedesktop.secrets (for example GNOME Keyring), and an existing unlocked default
+collection for writes. The helper does not create or unlock collections or prompt.
+No sudo/system-bus substitute is supported. Both binaries must target the package's
+Linux architecture; this build script is native-host only.
+
+The helper receives NUL-delimited fields over stdin, never token arguments. It
+returns fixed exit statuses: 4 absent, 10 missing session service, 11 locked,
+12 denied, 13 otherwise unavailable. Native stderr is discarded; the adapter
+returns only fixed diagnostics. Reads/deletes fail closed for locked matching
+items, writes fail closed for a locked default collection. Missing entries and
+repeated deletion remain distinct from service failure. A racing lock may fail
+with unavailable rather than an interactive unlock. Each helper call has a
+15-second process deadline.
+
+Headless systems often have no session bus/service: installation does not imply
+secure storage is usable. No plaintext fallback is implemented by this adapter;
+it does not read/write the Go file fallback or honor ASSIGN_CREDENTIALS_FILE.
+ASSIGN_TOKEN remains the separate noninteractive authentication path and must
+bypass vault construction in command composition. This slice adds no login or
+token resolver and does not change the serving Go CLI's file-fallback behavior.
+
+`bun test fixtures/credentials-linux.test.ts` uses a fake service only, covering
+read/write/delete, exact partitions and unavailable conditions without touching
+a user vault. Native Linux compilation, service races, installed packaging and
+renderer denial remain host qualification; macOS fake-store tests do not prove them.
