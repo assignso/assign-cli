@@ -158,3 +158,49 @@ token resolver and does not change the serving Go CLI's file-fallback behavior.
 read/write/delete, exact partitions and unavailable conditions without touching
 a user vault. Native Linux compilation, service races, installed packaging and
 renderer denial remain host qualification; macOS fake-store tests do not prove them.
+
+## Windows credential adapter (internal candidate)
+
+`src/credentials-windows.ts` reuses the schema-1 codec and exact host account
+partition. Its private C helper calls `CredReadW`, `CredWriteW`, `CredDeleteW`
+and `CredFree` in system Advapi32, using SDK types rather than FFI layouts.
+Generic targets are `Assign CLI:<exact host>` and UserName is the exact host,
+matching go-keyring v0.2.8 and wincred v1.2.3. Blobs remain raw UTF-8 JSON bytes,
+not UTF-16. `CRED_PERSIST_LOCAL_MACHINE` persists across logon sessions for the
+same user on this device and does not roam. Logout deletes that exact generic
+item; absent deletion succeeds. No migration copy or re-key is required; Go can
+read the same schema after rollback. Never instantiate this port in the renderer.
+
+The alternative Bun.secrets API in pinned Bun 1.4.3+c6da4a4d3 uses a slash target,
+so it cannot preserve the existing Go identity. This helper adds a private native
+packaging artifact but avoids an addon dependency and architecture-specific FFI
+layout. Build with the Windows SDK and MSVC matching native Bun x64 or arm64:
+
+```sh
+bun scripts/build-windows-helper.ts
+bun test fixtures/credentials-windows.test.ts fixtures/credentials-windows-native.test.ts
+```
+
+The ordinary Windows build also builds the helper; ship
+`dist/assign-credential-manager.exe` alongside the command. The package must pass
+its trusted absolute drive path to `nativeWindowsCredentialStore`. No PATH lookup,
+PowerShell, shell interpolation or credential-bearing argv/environment is used.
+Only the operation is an argument; bounded NUL-delimited stdin carries identifiers
+and payload. The helper erases its buffers, frees native read allocations and
+returns fixed codes: missing read 4, denied 12, other failures 13. The parent
+suppresses native stderr and maps failures to content-free errors. Reads missing
+from the vault use `not-found`; malformed schema uses `invalid`.
+
+Local deterministic fixtures are prepared port evidence only. The explicit
+native selector skips on other hosts. Run the commands above separately on native
+Windows x64 and arm64 with the pinned Bun; record architecture, compiler identity,
+pass/fail/skip counts and helper hash. Cross-compilation or emulation cannot close
+native acceptance. Additional native checks must inspect target, UserName, blob
+bytes and persistence through an independent Go/Win32 reader and verify denied
+access with the actual renderer token. These native receipts are outstanding;
+no installed-package, signing, renderer isolation or migration qualification is
+claimed by local fixtures.
+
+Sources: [Microsoft CredWriteW](https://learn.microsoft.com/en-us/windows/win32/api/wincred/nf-wincred-credwritew),
+[Go adapter v0.2.8](https://github.com/zalando/go-keyring/blob/v0.2.8/keyring_windows.go),
+and the workspace native feasibility packet's Existing credential identities section.

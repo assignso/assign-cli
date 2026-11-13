@@ -37,3 +37,7 @@ if (build.exitCode === 0 && process.platform === "linux") {
     ...flags.stdout.toString().trim().split(/\s+/)], {stdout: "inherit", stderr: "inherit"});
   if (native.exitCode !== 0) throw new Error("Linux credential helper compilation failed");
 }
+
+if (build.exitCode === 0 && process.platform === 'win32') {
+  await import('./build-windows-helper.ts');
+}
