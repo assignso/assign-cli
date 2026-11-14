@@ -1,0 +1,3667 @@
+{
+  "aliases": "signin  login\nsignout  logout\nfind  search\nt  task\nws  workspace\np  project\ndoc  document\ncompletions  completion\nv  version\ndiag, diagnose  doctor\n",
+  "cases": [
+    {
+      "argv": [
+        "activity",
+        "groups",
+        "--actor-id",
+        "\"unterminated"
+      ],
+      "code": 2,
+      "stdout": "",
+      "stderr": "assign: invalid argument \"\\\"unterminated\" for \"--actor-id\" flag: parse error on line 1, column 14: extraneous or missing \" in quoted-field\n"
+    },
+    {
+      "argv": [
+        "missing"
+      ],
+      "code": 2,
+      "stdout": "",
+      "stderr": "assign: unknown argument \"missing\" for \"assign\"\n"
+    },
+    {
+      "argv": [
+        "versoin"
+      ],
+      "code": 2,
+      "stdout": "",
+      "stderr": "assign: unknown argument \"versoin\" for \"assign\"\n"
+    },
+    {
+      "argv": [
+        "ta"
+      ],
+      "code": 2,
+      "stdout": "",
+      "stderr": "assign: unknown argument \"ta\" for \"assign\"\n"
+    },
+    {
+      "argv": [
+        "task",
+        "wat"
+      ],
+      "code": 0,
+      "stdout": "Work with Tasks\n\nUsage:\n  assign task [command]\n\nAliases:\n  task, t\n\nAvailable Commands:\n  comment     Add an explicit Task comment; - reads bounded UTF-8 stdin\n  comments    Read one bounded page of a Task's comments\n  context     Print bounded, untrusted Task context and related Tasks as Markdown\n  create      Create a Task using canonical Workspace defaults\n  done        Complete a Task\n  reopen      Reopen a Task\n  show        Show a Task and its current revision\n  start       Start and assign a Task\n\nFlags:\n  -h, --help   help for task\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign task [command] --help\" for more information about a command.\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--unknown"
+      ],
+      "code": 2,
+      "stdout": "",
+      "stderr": "assign: unknown flag: --unknown\n"
+    },
+    {
+      "argv": [
+        "version",
+        "extra"
+      ],
+      "code": 2,
+      "stdout": "",
+      "stderr": "assign: unknown argument \"extra\" for \"assign version\"\n"
+    },
+    {
+      "argv": [
+        "task",
+        "show"
+      ],
+      "code": 2,
+      "stdout": "",
+      "stderr": "assign: \"assign task show\" requires exactly 1 argument(s)\n"
+    },
+    {
+      "argv": [
+        "project",
+        "tasks",
+        "PRO",
+        "--limit",
+        "oops"
+      ],
+      "code": 2,
+      "stdout": "",
+      "stderr": "assign: invalid argument \"oops\" for \"--limit\" flag: strconv.ParseInt: parsing \"oops\": invalid syntax\n"
+    },
+    {
+      "argv": [
+        "operation",
+        "wait",
+        "abc",
+        "--timeout",
+        "oops"
+      ],
+      "code": 2,
+      "stdout": "",
+      "stderr": "assign: invalid argument \"oops\" for \"--timeout\" flag: time: invalid duration \"oops\"\n"
+    },
+    {
+      "argv": [
+        "task",
+        "context",
+        "ABC-1",
+        "--compact",
+        "--full"
+      ],
+      "code": 1,
+      "stdout": "",
+      "stderr": "assign: if any flags in the group [compact full] are set none of the others can be; [compact full] were all set\n"
+    },
+    {
+      "argv": [
+        "--help=false",
+        "version"
+      ],
+      "code": 0,
+      "stdout": "assign dev\ncommit none\nbuilt unknown\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--version"
+      ],
+      "code": 0,
+      "stdout": "assign version dev\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "-v"
+      ],
+      "code": 0,
+      "stdout": "assign version dev\n",
+      "stderr": ""
+    }
+  ],
+  "nodes": [
+    {
+      "path": "assign",
+      "aliases": null,
+      "help": "Work with Assign from the terminal\n\nUsage:\n  assign [flags]\n  assign [command]\n\nAvailable Commands:\n  activity    Read authorized Activity groups\n  agent       Submit an existing Assign-hosted Agent\n  aliases     List command aliases\n  completion  Generate shell completion\n  config      Inspect and change local CLI settings\n  discuss     Open Discuss in the terminal\n  doctor      Run redacted local diagnostics\n  document    Read Documents\n  done        Complete a Task\n  help        Help about any command\n  init        Validate and select a Project for the authenticated Workspace\n  login       Sign in through the system browser\n  logout      Revoke and remove the interactive CLI credential\n  mcp         Set up and diagnose Assign MCP clients\n  milestone   Read Milestones by Project code\n  operation   Recover compact status for an existing hosted Operation\n  project     Inspect Projects and their Tasks\n  reopen      Reopen a Task\n  search      Search content in the token Workspace\n  start       Start and assign a Task\n  task        Work with Tasks\n  update      Check for Assign CLI updates\n  version     Print version and build information\n  workspace   Inspect and switch Workspaces\n\nFlags:\n  -h, --help          help for assign\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n  -v, --version       version for assign\n\nUse \"assign [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "version",
+          "short": "v",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\"",
+        "unknown argument \"argument\" for \"assign\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign activity",
+      "aliases": null,
+      "help": "Read authorized Activity groups\n\nUsage:\n  assign activity [command]\n\nAvailable Commands:\n  children    Expand one current Activity group\n  groups      Read one page of daily Activity groups\n\nFlags:\n  -h, --help   help for activity\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign activity [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\"",
+        "unknown argument \"argument\" for \"assign activity\""
+      ],
+      "runnable": false
+    },
+    {
+      "path": "assign activity children",
+      "aliases": null,
+      "help": "Expand one current Activity group\n\nUsage:\n  assign activity children \u003cgroup-id\u003e [flags]\n\nFlags:\n      --actor-id strings        Actor UUID filter, at most 50\n      --before-day string       Exclusive civil day, at most 90 days after from-day\n      --cursor string           Opaque continuation; preserve every selector\n      --day string              Civil day (YYYY-MM-DD)\n      --from-day string         Inclusive civil day\n      --group-revision string   Current parent revision\n  -h, --help                    help for children\n      --include-previews        Include authorized current preview observations (default true)\n      --limit int               Page size (default 25)\n      --project-id strings      Project UUID filter, at most 50\n      --resource-id string      Person, Project or Task UUID\n      --scope string            workspace, account, person, project or task\n      --snapshot string         Current parent snapshot\n      --time-zone string        IANA timezone; defaults to effective account/Workspace setting\n      --type strings            Activity type filter, at most 50\n      --workspace string        Credential-bound Workspace UUID\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "actor-id",
+          "short": "",
+          "type": "stringSlice",
+          "default": "[]",
+          "annotations": null
+        },
+        {
+          "name": "before-day",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "cursor",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "day",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "from-day",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "group-revision",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "include-previews",
+          "short": "",
+          "type": "bool",
+          "default": "true",
+          "annotations": null
+        },
+        {
+          "name": "limit",
+          "short": "",
+          "type": "int",
+          "default": "25",
+          "annotations": null
+        },
+        {
+          "name": "project-id",
+          "short": "",
+          "type": "stringSlice",
+          "default": "[]",
+          "annotations": null
+        },
+        {
+          "name": "resource-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "scope",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "snapshot",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "time-zone",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "type",
+          "short": "",
+          "type": "stringSlice",
+          "default": "[]",
+          "annotations": null
+        },
+        {
+          "name": "workspace",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)",
+        "\"assign activity children\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign activity groups",
+      "aliases": null,
+      "help": "Read one page of daily Activity groups\n\nUsage:\n  assign activity groups [flags]\n\nFlags:\n      --actor-id strings     Actor UUID filter, at most 50\n      --before-day string    Exclusive civil day, at most 90 days after from-day\n      --cursor string        Opaque continuation; preserve every selector\n      --day string           Civil day (YYYY-MM-DD)\n      --from-day string      Inclusive civil day\n  -h, --help                 help for groups\n      --include-previews     Include authorized current preview observations (default true)\n      --limit int            Page size (default 10)\n      --project-id strings   Project UUID filter, at most 50\n      --resource-id string   Person, Project or Task UUID\n      --scope string         workspace, account, person, project or task\n      --time-zone string     IANA timezone; defaults to effective account/Workspace setting\n      --type strings         Activity type filter, at most 50\n      --workspace string     Credential-bound Workspace UUID\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "actor-id",
+          "short": "",
+          "type": "stringSlice",
+          "default": "[]",
+          "annotations": null
+        },
+        {
+          "name": "before-day",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "cursor",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "day",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "from-day",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "include-previews",
+          "short": "",
+          "type": "bool",
+          "default": "true",
+          "annotations": null
+        },
+        {
+          "name": "limit",
+          "short": "",
+          "type": "int",
+          "default": "10",
+          "annotations": null
+        },
+        {
+          "name": "project-id",
+          "short": "",
+          "type": "stringSlice",
+          "default": "[]",
+          "annotations": null
+        },
+        {
+          "name": "resource-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "scope",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "time-zone",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "type",
+          "short": "",
+          "type": "stringSlice",
+          "default": "[]",
+          "annotations": null
+        },
+        {
+          "name": "workspace",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\"",
+        "unknown argument \"argument\" for \"assign activity groups\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign agent",
+      "aliases": null,
+      "help": "Submit an existing Assign-hosted Agent\n\nUsage:\n  assign agent [command]\n\nAvailable Commands:\n  run         Submit one hosted run and print its compact Operation receipt\n\nFlags:\n  -h, --help   help for agent\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign agent [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "runnable": false
+    },
+    {
+      "path": "assign agent run",
+      "aliases": null,
+      "help": "Submit one hosted run and print its compact Operation receipt\n\nUsage:\n  assign agent run \u003cagent-id\u003e [flags]\n\nFlags:\n  -h, --help                     help for run\n      --idempotency-key string   Original submission key, retained for identical recovery (required)\n      --workspace string         Workspace UUID (required)\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "idempotency-key",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "workspace",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)",
+        "\"assign agent run\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign aliases",
+      "aliases": null,
+      "help": "List command aliases\n\nUsage:\n  assign aliases [flags]\n\nFlags:\n  -h, --help   help for aliases\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\"",
+        "unknown argument \"argument\" for \"assign aliases\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign completion",
+      "aliases": [
+        "completions"
+      ],
+      "help": "Generate shell completion\n\nUsage:\n  assign completion [bash|zsh|fish] [flags]\n\nAliases:\n  completion, completions\n\nFlags:\n  -h, --help   help for completion\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)",
+        "\"assign completion\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign config",
+      "aliases": null,
+      "help": "Inspect and change local CLI settings\n\nUsage:\n  assign config [flags]\n  assign config [command]\n\nAvailable Commands:\n  set         Persist the API host for future commands\n  show        Show the effective API host without credentials\n  unset       Restore the default API host\n\nFlags:\n  -h, --help   help for config\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign config [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\"",
+        "unknown argument \"argument\" for \"assign config\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign config set",
+      "aliases": null,
+      "help": "Persist the API host for future commands\n\nUsage:\n  assign config set host \u003chttps-origin\u003e [flags]\n\nFlags:\n  -h, --help   help for set\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)",
+        "\"assign config set\" requires exactly 2 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign config show",
+      "aliases": null,
+      "help": "Show the effective API host without credentials\n\nUsage:\n  assign config show [flags]\n\nFlags:\n  -h, --help   help for show\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\"",
+        "unknown argument \"argument\" for \"assign config show\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign config unset",
+      "aliases": null,
+      "help": "Restore the default API host\n\nUsage:\n  assign config unset host [flags]\n\nFlags:\n  -h, --help   help for unset\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)",
+        "\"assign config unset\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign discuss",
+      "aliases": null,
+      "help": "Open Discuss in the terminal\n\nUsage:\n  assign discuss [flags]\n\nFlags:\n  -h, --help   help for discuss\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\"",
+        "unknown argument \"argument\" for \"assign discuss\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign doctor",
+      "aliases": [
+        "diag",
+        "diagnose"
+      ],
+      "help": "Run redacted local diagnostics\n\nUsage:\n  assign doctor [flags]\n\nAliases:\n  doctor, diag, diagnose\n\nFlags:\n  -h, --help   help for doctor\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\"",
+        "unknown argument \"argument\" for \"assign doctor\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign document",
+      "aliases": [
+        "doc"
+      ],
+      "help": "Read Documents\n\nUsage:\n  assign document [document-path] [flags]\n  assign document [command]\n\nAliases:\n  document, doc\n\nAvailable Commands:\n  list        List Documents in the current Workspace\n  open        Open a Document in the browser\n  show        Show a Document as text\n  url         Print a Document's canonical browser URL\n\nFlags:\n  -h, --help   help for document\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign document [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "",
+        "accepts at most 1 arg(s), received 2",
+        "accepts at most 1 arg(s), received 3",
+        "accepts at most 1 arg(s), received 4",
+        "accepts at most 1 arg(s), received 5",
+        "accepts at most 1 arg(s), received 6",
+        "accepts at most 1 arg(s), received 7",
+        "accepts at most 1 arg(s), received 8",
+        "accepts at most 1 arg(s), received 9",
+        "accepts at most 1 arg(s), received 10",
+        "accepts at most 1 arg(s), received 11",
+        "accepts at most 1 arg(s), received 12",
+        "accepts at most 1 arg(s), received 13",
+        "accepts at most 1 arg(s), received 14",
+        "accepts at most 1 arg(s), received 15"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign document list",
+      "aliases": [
+        "ls"
+      ],
+      "help": "List Documents in the current Workspace\n\nUsage:\n  assign document list [flags]\n\nAliases:\n  list, ls\n\nFlags:\n  -h, --help             help for list\n  -p, --project string   Limit Documents to a Project code\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "project",
+          "short": "p",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\"",
+        "unknown argument \"argument\" for \"assign document list\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign document open",
+      "aliases": null,
+      "help": "Open a Document in the browser\n\nUsage:\n  assign document open \u003cdocument-path\u003e [flags]\n\nFlags:\n  -h, --help   help for open\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)",
+        "\"assign document open\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign document show",
+      "aliases": [
+        "view"
+      ],
+      "help": "Show a Document as text\n\nUsage:\n  assign document show \u003cdocument-path\u003e [flags]\n\nAliases:\n  show, view\n\nFlags:\n  -h, --help   help for show\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)",
+        "\"assign document show\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign document url",
+      "aliases": null,
+      "help": "Print a Document's canonical browser URL\n\nUsage:\n  assign document url \u003cdocument-path\u003e [flags]\n\nFlags:\n  -h, --help   help for url\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)",
+        "\"assign document url\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign done",
+      "aliases": null,
+      "help": "Complete a Task\n\nUsage:\n  assign done \u003ctask-code\u003e [flags]\n\nFlags:\n  -h, --help                      help for done\n      --idempotency-key string    Retain a 16–200 character key for identical retries; generated when omitted\n      --if-match string           Original opaque Task validator for an identical retry\n      --revision int              Current Task revision, as printed by assign task show (optimistic concurrency)\n      --target-status-id string   Completing Status UUID; required when several Statuses count as completed\n      --task-id string            Original immutable Task ID for an identical retry\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "idempotency-key",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "if-match",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "revision",
+          "short": "",
+          "type": "int64",
+          "default": "0",
+          "annotations": null
+        },
+        {
+          "name": "target-status-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "task-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign done\" requires exactly 1 argument(s)",
+        "",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)",
+        "\"assign done\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign help",
+      "aliases": null,
+      "help": "Help provides help for any command in the application.\nSimply type assign help [path to command] for full details.\n\nUsage:\n  assign help [command] [flags]\n\nFlags:\n  -h, --help   help for help\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign init",
+      "aliases": null,
+      "help": "Initialize CLI Project selection for the current authenticated Workspace and API host. Run assign login first. This stores a local hint in user configuration; every later Project read rechecks access.\n\nUsage:\n  assign init \u003cproject-code\u003e [flags]\n\nFlags:\n  -h, --help   help for init\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign init\" requires exactly 1 argument(s)",
+        "",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)",
+        "\"assign init\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign login",
+      "aliases": [
+        "signin"
+      ],
+      "help": "Sign in through the system browser\n\nUsage:\n  assign login [flags]\n\nAliases:\n  login, signin\n\nFlags:\n  -h, --help   help for login\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\"",
+        "unknown argument \"argument\" for \"assign login\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign logout",
+      "aliases": [
+        "signout"
+      ],
+      "help": "Revoke and remove the interactive CLI credential\n\nUsage:\n  assign logout [flags]\n\nAliases:\n  logout, signout\n\nFlags:\n  -h, --help   help for logout\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\"",
+        "unknown argument \"argument\" for \"assign logout\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign mcp",
+      "aliases": null,
+      "help": "Set up and diagnose Assign MCP clients\n\nUsage:\n  assign mcp [command]\n\nAvailable Commands:\n  setup       Configure Assign MCP in Codex\n\nFlags:\n  -h, --help   help for mcp\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign mcp [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\"",
+        "unknown argument \"argument\" for \"assign mcp\""
+      ],
+      "runnable": false
+    },
+    {
+      "path": "assign mcp serve",
+      "aliases": null,
+      "help": "Serve Assign MCP over stdio using CLI authentication\n\nUsage:\n  assign mcp serve [flags]\n\nFlags:\n  -h, --help            help for serve\n      --scopes string   attenuated MCP scopes (default \"assign:read,assign:write\")\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "scopes",
+          "short": "",
+          "type": "string",
+          "default": "assign:read,assign:write",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\"",
+        "unknown argument \"argument\" for \"assign mcp serve\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign mcp setup",
+      "aliases": null,
+      "help": "Configure Assign MCP in Codex\n\nUsage:\n  assign mcp setup codex [flags]\n\nFlags:\n  -h, --help               help for setup\n      --scopes string      MCP scopes: assign:read or assign:read,assign:write (default \"assign:read,assign:write\")\n      --transport string   MCP transport: remote or stdio (default \"remote\")\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "scopes",
+          "short": "",
+          "type": "string",
+          "default": "assign:read,assign:write",
+          "annotations": null
+        },
+        {
+          "name": "transport",
+          "short": "",
+          "type": "string",
+          "default": "remote",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)",
+        "\"assign mcp setup\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign milestone",
+      "aliases": null,
+      "help": "Read Milestones by Project code\n\nUsage:\n  assign milestone [command]\n\nAvailable Commands:\n  show        Show a Milestone and canonical Task progress\n  tasks       Read one checked page of a Milestone's non-archived Tasks\n\nFlags:\n  -h, --help   help for milestone\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign milestone [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\"",
+        "unknown argument \"argument\" for \"assign milestone\""
+      ],
+      "runnable": false
+    },
+    {
+      "path": "assign milestone show",
+      "aliases": null,
+      "help": "Show a Milestone and canonical Task progress\n\nUsage:\n  assign milestone show \u003cmilestone-code\u003e [flags]\n\nFlags:\n      --field string   Print one field: id, code, number, name, project_id, status, revision, due_on, total_tasks, completed_tasks, incomplete_tasks\n  -h, --help           help for show\n      --json           Print the canonical Milestone/progress projection as JSON\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "field",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "json",
+          "short": "",
+          "type": "bool",
+          "default": "false",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)",
+        "\"assign milestone show\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign milestone tasks",
+      "aliases": null,
+      "help": "Read one checked page of a Milestone's non-archived Tasks\n\nUsage:\n  assign milestone tasks \u003cmilestone-code\u003e [flags]\n\nFlags:\n      --cursor string   Opaque checked continuation cursor from the same Milestone query\n      --field string    Print code values, next_cursor, or coverage\n      --format string   Page output: text or JSON with scope, Tasks and checked coverage (default \"text\")\n  -h, --help            help for tasks\n      --limit int       Tasks per page (1–100); continuation remains explicit (default 100)\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "cursor",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "field",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "format",
+          "short": "",
+          "type": "string",
+          "default": "text",
+          "annotations": null
+        },
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "limit",
+          "short": "",
+          "type": "int",
+          "default": "100",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)",
+        "\"assign milestone tasks\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign operation",
+      "aliases": null,
+      "help": "Recover compact status for an existing hosted Operation\n\nUsage:\n  assign operation [command]\n\nAvailable Commands:\n  cancel      Request best-effort cancellation with the original command key\n  show        Read current authorized compact status once\n  wait        Wait for external recovery within the bounded Operation policy\n\nFlags:\n  -h, --help   help for operation\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign operation [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "runnable": false
+    },
+    {
+      "path": "assign operation cancel",
+      "aliases": null,
+      "help": "Request best-effort cancellation with the original command key\n\nUsage:\n  assign operation cancel \u003coperation-id\u003e [flags]\n\nFlags:\n  -h, --help                     help for cancel\n      --idempotency-key string   Original cancellation key (required)\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "idempotency-key",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)",
+        "\"assign operation cancel\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign operation show",
+      "aliases": null,
+      "help": "Read current authorized compact status once\n\nUsage:\n  assign operation show \u003coperation-id\u003e [flags]\n\nFlags:\n  -h, --help   help for show\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)",
+        "\"assign operation show\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign operation wait",
+      "aliases": null,
+      "help": "Wait for external recovery within the bounded Operation policy\n\nUsage:\n  assign operation wait \u003coperation-id\u003e [flags]\n\nFlags:\n  -h, --help               help for wait\n      --timeout duration   Caller deadline, at most 60s (default 1m0s)\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "timeout",
+          "short": "",
+          "type": "duration",
+          "default": "1m0s",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)",
+        "\"assign operation wait\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign project",
+      "aliases": [
+        "p"
+      ],
+      "help": "Inspect Projects and their Tasks\n\nUsage:\n  assign project [project-code] [flags]\n  assign project [command]\n\nAliases:\n  project, p\n\nAvailable Commands:\n  current     Print the selected Project code\n  documents   List a Project's Documents\n  list        List Projects in the current Workspace\n  open        Open a Project in the browser\n  show        Show a Project\n  switch      Select the current Project\n  tasks       Read one bounded page of a Project's Tasks\n  url         Print a Project's canonical browser URL\n\nFlags:\n  -h, --help   help for project\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign project [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "",
+        "accepts at most 1 arg(s), received 2",
+        "accepts at most 1 arg(s), received 3",
+        "accepts at most 1 arg(s), received 4",
+        "accepts at most 1 arg(s), received 5",
+        "accepts at most 1 arg(s), received 6",
+        "accepts at most 1 arg(s), received 7",
+        "accepts at most 1 arg(s), received 8",
+        "accepts at most 1 arg(s), received 9",
+        "accepts at most 1 arg(s), received 10",
+        "accepts at most 1 arg(s), received 11",
+        "accepts at most 1 arg(s), received 12",
+        "accepts at most 1 arg(s), received 13",
+        "accepts at most 1 arg(s), received 14",
+        "accepts at most 1 arg(s), received 15"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign project current",
+      "aliases": [
+        "cur"
+      ],
+      "help": "Print the selected Project code\n\nUsage:\n  assign project current [flags]\n\nAliases:\n  current, cur\n\nFlags:\n  -h, --help   help for current\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\"",
+        "unknown argument \"argument\" for \"assign project current\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign project documents",
+      "aliases": [
+        "docs",
+        "doc"
+      ],
+      "help": "List a Project's Documents\n\nUsage:\n  assign project documents [project-code] [flags]\n\nAliases:\n  documents, docs, doc\n\nFlags:\n  -h, --help   help for documents\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "",
+        "accepts at most 1 arg(s), received 2",
+        "accepts at most 1 arg(s), received 3",
+        "accepts at most 1 arg(s), received 4",
+        "accepts at most 1 arg(s), received 5",
+        "accepts at most 1 arg(s), received 6",
+        "accepts at most 1 arg(s), received 7",
+        "accepts at most 1 arg(s), received 8",
+        "accepts at most 1 arg(s), received 9",
+        "accepts at most 1 arg(s), received 10",
+        "accepts at most 1 arg(s), received 11",
+        "accepts at most 1 arg(s), received 12",
+        "accepts at most 1 arg(s), received 13",
+        "accepts at most 1 arg(s), received 14",
+        "accepts at most 1 arg(s), received 15"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign project list",
+      "aliases": [
+        "ls"
+      ],
+      "help": "List Projects in the current Workspace\n\nUsage:\n  assign project list [flags]\n\nAliases:\n  list, ls\n\nFlags:\n  -h, --help   help for list\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\"",
+        "unknown argument \"argument\" for \"assign project list\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign project open",
+      "aliases": null,
+      "help": "Open a Project in the browser\n\nUsage:\n  assign project open [project-code] [flags]\n\nFlags:\n  -h, --help   help for open\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "",
+        "accepts at most 1 arg(s), received 2",
+        "accepts at most 1 arg(s), received 3",
+        "accepts at most 1 arg(s), received 4",
+        "accepts at most 1 arg(s), received 5",
+        "accepts at most 1 arg(s), received 6",
+        "accepts at most 1 arg(s), received 7",
+        "accepts at most 1 arg(s), received 8",
+        "accepts at most 1 arg(s), received 9",
+        "accepts at most 1 arg(s), received 10",
+        "accepts at most 1 arg(s), received 11",
+        "accepts at most 1 arg(s), received 12",
+        "accepts at most 1 arg(s), received 13",
+        "accepts at most 1 arg(s), received 14",
+        "accepts at most 1 arg(s), received 15"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign project show",
+      "aliases": [
+        "view"
+      ],
+      "help": "Show a Project\n\nUsage:\n  assign project show [project-code] [flags]\n\nAliases:\n  show, view\n\nFlags:\n  -h, --help   help for show\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "",
+        "accepts at most 1 arg(s), received 2",
+        "accepts at most 1 arg(s), received 3",
+        "accepts at most 1 arg(s), received 4",
+        "accepts at most 1 arg(s), received 5",
+        "accepts at most 1 arg(s), received 6",
+        "accepts at most 1 arg(s), received 7",
+        "accepts at most 1 arg(s), received 8",
+        "accepts at most 1 arg(s), received 9",
+        "accepts at most 1 arg(s), received 10",
+        "accepts at most 1 arg(s), received 11",
+        "accepts at most 1 arg(s), received 12",
+        "accepts at most 1 arg(s), received 13",
+        "accepts at most 1 arg(s), received 14",
+        "accepts at most 1 arg(s), received 15"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign project switch",
+      "aliases": [
+        "use",
+        "sw"
+      ],
+      "help": "Select the current Project\n\nUsage:\n  assign project switch \u003cproject-code\u003e [flags]\n\nAliases:\n  switch, use, sw\n\nFlags:\n  -h, --help   help for switch\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)",
+        "\"assign project switch\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign project tasks",
+      "aliases": [
+        "t"
+      ],
+      "help": "Read one bounded page of a Project's Tasks\n\nUsage:\n  assign project tasks [project-code] [flags]\n\nAliases:\n  tasks, t\n\nFlags:\n      --cursor string   Opaque continuation cursor from the same Project\n      --field string    Print code values, next_cursor (blank at end), or has_more\n      --format string   Page output: text or bounded JSON with Tasks and continuation (default \"text\")\n  -h, --help            help for tasks\n      --limit int       Tasks per page (1–100) (default 100)\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "cursor",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "field",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "format",
+          "short": "",
+          "type": "string",
+          "default": "text",
+          "annotations": null
+        },
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "limit",
+          "short": "",
+          "type": "int",
+          "default": "100",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "",
+        "accepts at most 1 arg(s), received 2",
+        "accepts at most 1 arg(s), received 3",
+        "accepts at most 1 arg(s), received 4",
+        "accepts at most 1 arg(s), received 5",
+        "accepts at most 1 arg(s), received 6",
+        "accepts at most 1 arg(s), received 7",
+        "accepts at most 1 arg(s), received 8",
+        "accepts at most 1 arg(s), received 9",
+        "accepts at most 1 arg(s), received 10",
+        "accepts at most 1 arg(s), received 11",
+        "accepts at most 1 arg(s), received 12",
+        "accepts at most 1 arg(s), received 13",
+        "accepts at most 1 arg(s), received 14",
+        "accepts at most 1 arg(s), received 15"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign project url",
+      "aliases": null,
+      "help": "Print a Project's canonical browser URL\n\nUsage:\n  assign project url [project-code] [flags]\n\nFlags:\n  -h, --help   help for url\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "",
+        "accepts at most 1 arg(s), received 2",
+        "accepts at most 1 arg(s), received 3",
+        "accepts at most 1 arg(s), received 4",
+        "accepts at most 1 arg(s), received 5",
+        "accepts at most 1 arg(s), received 6",
+        "accepts at most 1 arg(s), received 7",
+        "accepts at most 1 arg(s), received 8",
+        "accepts at most 1 arg(s), received 9",
+        "accepts at most 1 arg(s), received 10",
+        "accepts at most 1 arg(s), received 11",
+        "accepts at most 1 arg(s), received 12",
+        "accepts at most 1 arg(s), received 13",
+        "accepts at most 1 arg(s), received 14",
+        "accepts at most 1 arg(s), received 15"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign reopen",
+      "aliases": null,
+      "help": "Reopen a Task\n\nUsage:\n  assign reopen \u003ctask-code\u003e [flags]\n\nFlags:\n  -h, --help                     help for reopen\n      --idempotency-key string   Retain a 16–200 character key for identical retries; generated when omitted\n      --if-match string          Original opaque Task validator for an identical retry\n      --revision int             Current Task revision, as printed by assign task show (optimistic concurrency)\n      --task-id string           Original immutable Task ID for an identical retry\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "idempotency-key",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "if-match",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "revision",
+          "short": "",
+          "type": "int64",
+          "default": "0",
+          "annotations": null
+        },
+        {
+          "name": "task-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)",
+        "\"assign reopen\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign search",
+      "aliases": [
+        "find"
+      ],
+      "help": "Search content in the token Workspace\n\nUsage:\n  assign search \u003cquery\u003e [flags]\n\nAliases:\n  search, find\n\nFlags:\n  -h, --help   help for search\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign search\" requires exactly 1 argument(s)",
+        "",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)",
+        "\"assign search\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign start",
+      "aliases": null,
+      "help": "Start and assign a Task\n\nUsage:\n  assign start \u003ctask-code\u003e [flags]\n\nFlags:\n  -h, --help                     help for start\n      --idempotency-key string   Retain a 16–200 character key for identical retries; generated when omitted\n      --if-match string          Original opaque Task validator for an identical retry\n      --revision int             Current Task revision, as printed by assign task show (optimistic concurrency)\n      --task-id string           Original immutable Task ID for an identical retry\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "idempotency-key",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "if-match",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "revision",
+          "short": "",
+          "type": "int64",
+          "default": "0",
+          "annotations": null
+        },
+        {
+          "name": "task-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign start\" requires exactly 1 argument(s)",
+        "",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)",
+        "\"assign start\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign task",
+      "aliases": [
+        "t"
+      ],
+      "help": "Work with Tasks\n\nUsage:\n  assign task [command]\n\nAliases:\n  task, t\n\nAvailable Commands:\n  comment     Add an explicit Task comment; - reads bounded UTF-8 stdin\n  comments    Read one bounded page of a Task's comments\n  context     Print bounded, untrusted Task context and related Tasks as Markdown\n  create      Create a Task using canonical Workspace defaults\n  done        Complete a Task\n  reopen      Reopen a Task\n  show        Show a Task and its current revision\n  start       Start and assign a Task\n\nFlags:\n  -h, --help   help for task\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign task [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\"",
+        "unknown argument \"argument\" for \"assign task\""
+      ],
+      "runnable": false
+    },
+    {
+      "path": "assign task comment",
+      "aliases": null,
+      "help": "Add an explicit Task comment; - reads bounded UTF-8 stdin\n\nUsage:\n  assign task comment \u003ctask-code\u003e \u003cmessage|-\u003e [flags]\n\nFlags:\n  -h, --help                     help for comment\n      --idempotency-key string   Retain a 16–200 character key for identical retries; generated when omitted\n      --task-id string           Original Task UUID printed before an uncertain comment\n      --workspace-id string      Credential Workspace UUID and original recovery target\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "idempotency-key",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "task-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "workspace-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)",
+        "\"assign task comment\" requires exactly 2 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign task comments",
+      "aliases": null,
+      "help": "Read one bounded page of a Task's comments\n\nUsage:\n  assign task comments \u003ctask-code\u003e [flags]\n\nFlags:\n      --cursor string         Opaque continuation cursor from the same Task\n  -h, --help                  help for comments\n      --limit int             Comments per page (1–100) (default 50)\n      --workspace-id string   Credential Workspace UUID for personal/service tokens\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "cursor",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "limit",
+          "short": "",
+          "type": "int",
+          "default": "50",
+          "annotations": null
+        },
+        {
+          "name": "workspace-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)",
+        "\"assign task comments\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign task context",
+      "aliases": [
+        "related"
+      ],
+      "help": "Print bounded, untrusted Task context and related Tasks as Markdown\n\nUsage:\n  assign task context \u003ctask-code\u003e [flags]\n\nAliases:\n  context, related\n\nFlags:\n      --compact               Use the compact 16 KiB profile (default)\n      --full                  Use the full 64 KiB profile\n  -h, --help                  help for context\n      --milestone string      Require observed membership in a Milestone code before and after the context read\n      --workspace-id string   Credential Workspace UUID for personal/service tokens\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "compact",
+          "short": "",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_mutually_exclusive": [
+              "compact full"
+            ]
+          }
+        },
+        {
+          "name": "full",
+          "short": "",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_mutually_exclusive": [
+              "compact full"
+            ]
+          }
+        },
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "milestone",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "workspace-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)",
+        "\"assign task context\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign task create",
+      "aliases": null,
+      "help": "Create a Task using canonical Workspace defaults\n\nUsage:\n  assign task create \u003ctitle\u003e [flags]\n\nFlags:\n      --description string       Description Markdown, or - for bounded UTF-8 stdin\n      --field string             Print only code\n  -h, --help                     help for create\n      --idempotency-key string   Original key for identical recovery; generated when omitted\n      --json                     Print the canonical Task and opaque receipt metadata\n      --priority string          Priority; omitted uses the Workspace creation default\n      --project string           Exact Project code; defaults to the selected Project\n      --project-id string        Original Project UUID printed before an uncertain create\n      --workspace-id string      Credential Workspace UUID; required for personal/service tokens and original recovery\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "description",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "field",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "idempotency-key",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "json",
+          "short": "",
+          "type": "bool",
+          "default": "false",
+          "annotations": null
+        },
+        {
+          "name": "priority",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "project",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "project-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "workspace-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)",
+        "\"assign task create\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign task done",
+      "aliases": null,
+      "help": "Complete a Task\n\nUsage:\n  assign task done \u003ctask-code\u003e [flags]\n\nFlags:\n  -h, --help                      help for done\n      --idempotency-key string    Retain a 16–200 character key for identical retries; generated when omitted\n      --if-match string           Original opaque Task validator for an identical retry\n      --revision int              Current Task revision, as printed by assign task show (optimistic concurrency)\n      --target-status-id string   Completing Status UUID; required when several Statuses count as completed\n      --task-id string            Original immutable Task ID for an identical retry\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "idempotency-key",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "if-match",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "revision",
+          "short": "",
+          "type": "int64",
+          "default": "0",
+          "annotations": null
+        },
+        {
+          "name": "target-status-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "task-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)",
+        "\"assign task done\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign task reopen",
+      "aliases": null,
+      "help": "Reopen a Task\n\nUsage:\n  assign task reopen \u003ctask-code\u003e [flags]\n\nFlags:\n  -h, --help                     help for reopen\n      --idempotency-key string   Retain a 16–200 character key for identical retries; generated when omitted\n      --if-match string          Original opaque Task validator for an identical retry\n      --revision int             Current Task revision, as printed by assign task show (optimistic concurrency)\n      --task-id string           Original immutable Task ID for an identical retry\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "idempotency-key",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "if-match",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "revision",
+          "short": "",
+          "type": "int64",
+          "default": "0",
+          "annotations": null
+        },
+        {
+          "name": "task-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)",
+        "\"assign task reopen\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign task show",
+      "aliases": [
+        "view"
+      ],
+      "help": "Show a Task and its current revision\n\nUsage:\n  assign task show \u003ctask-code\u003e [flags]\n\nAliases:\n  show, view\n\nFlags:\n      --field string   Print only one field: code, title, project, status, revision, url\n  -h, --help           help for show\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "field",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)",
+        "\"assign task show\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign task start",
+      "aliases": null,
+      "help": "Start and assign a Task\n\nUsage:\n  assign task start \u003ctask-code\u003e [flags]\n\nFlags:\n  -h, --help                     help for start\n      --idempotency-key string   Retain a 16–200 character key for identical retries; generated when omitted\n      --if-match string          Original opaque Task validator for an identical retry\n      --revision int             Current Task revision, as printed by assign task show (optimistic concurrency)\n      --task-id string           Original immutable Task ID for an identical retry\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        },
+        {
+          "name": "idempotency-key",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "if-match",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
+        {
+          "name": "revision",
+          "short": "",
+          "type": "int64",
+          "default": "0",
+          "annotations": null
+        },
+        {
+          "name": "task-id",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)",
+        "\"assign task start\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign update",
+      "aliases": null,
+      "help": "Check for Assign CLI updates\n\nUsage:\n  assign update [flags]\n  assign update [command]\n\nAvailable Commands:\n  check       Check whether a newer Assign CLI release is available\n  install     Show the verified platform installer command\n\nFlags:\n  -h, --help   help for update\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign update [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\"",
+        "unknown argument \"argument\" for \"assign update\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign update check",
+      "aliases": null,
+      "help": "Check whether a newer Assign CLI release is available\n\nUsage:\n  assign update check [flags]\n\nFlags:\n  -h, --help   help for check\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\"",
+        "unknown argument \"argument\" for \"assign update check\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign update install",
+      "aliases": null,
+      "help": "Show the verified platform installer command\n\nUsage:\n  assign update install [flags]\n\nFlags:\n  -h, --help   help for install\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\"",
+        "unknown argument \"argument\" for \"assign update install\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign version",
+      "aliases": [
+        "v"
+      ],
+      "help": "Print version and build information\n\nUsage:\n  assign version [flags]\n\nAliases:\n  version, v\n\nFlags:\n  -h, --help   help for version\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\"",
+        "unknown argument \"argument\" for \"assign version\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign workspace",
+      "aliases": [
+        "ws"
+      ],
+      "help": "Inspect and switch Workspaces\n\nUsage:\n  assign workspace [flags]\n  assign workspace [command]\n\nAliases:\n  workspace, ws\n\nAvailable Commands:\n  current     Print the current Workspace\n  list        List available Workspaces\n  show        Show the current Workspace\n  switch      Switch the interactive CLI credential to a Workspace\n\nFlags:\n  -h, --help   help for workspace\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n\nUse \"assign workspace [command] --help\" for more information about a command.\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\"",
+        "unknown argument \"argument\" for \"assign workspace\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign workspace current",
+      "aliases": [
+        "cur"
+      ],
+      "help": "Print the current Workspace\n\nUsage:\n  assign workspace current [flags]\n\nAliases:\n  current, cur\n\nFlags:\n  -h, --help   help for current\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\"",
+        "unknown argument \"argument\" for \"assign workspace current\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign workspace list",
+      "aliases": [
+        "ls"
+      ],
+      "help": "List available Workspaces\n\nUsage:\n  assign workspace list [flags]\n\nAliases:\n  list, ls\n\nFlags:\n  -h, --help   help for list\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\"",
+        "unknown argument \"argument\" for \"assign workspace list\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign workspace show",
+      "aliases": [
+        "view"
+      ],
+      "help": "Show the current Workspace\n\nUsage:\n  assign workspace show [flags]\n\nAliases:\n  show, view\n\nFlags:\n  -h, --help   help for show\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\"",
+        "unknown argument \"argument\" for \"assign workspace show\""
+      ],
+      "runnable": true
+    },
+    {
+      "path": "assign workspace switch",
+      "aliases": [
+        "use",
+        "sw"
+      ],
+      "help": "Switch the interactive CLI credential to a Workspace\n\nUsage:\n  assign workspace switch \u003cworkspace-slug\u003e [flags]\n\nAliases:\n  switch, use, sw\n\nFlags:\n  -h, --help   help for switch\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "default": "false",
+          "annotations": {
+            "cobra_annotation_flag_set_by_cobra": [
+              "true"
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "short": "",
+          "type": "string",
+          "default": "https://api.assign.so",
+          "annotations": null
+        }
+      ],
+      "args": [
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)",
+        "\"assign workspace switch\" requires exactly 1 argument(s)"
+      ],
+      "runnable": true
+    }
+  ],
+  "scripts": {
+    "bash": "# bash completion V2 for assign                               -*- shell-script -*-\n\n__assign_debug()\n{\n    if [[ -n ${BASH_COMP_DEBUG_FILE-} ]]; then\n        echo \"$*\" \u003e\u003e \"${BASH_COMP_DEBUG_FILE}\"\n    fi\n}\n\n# Macs have bash3 for which the bash-completion package doesn't include\n# _init_completion. This is a minimal version of that function.\n__assign_init_completion()\n{\n    COMPREPLY=()\n    _get_comp_words_by_ref \"$@\" cur prev words cword\n}\n\n# This function calls the assign program to obtain the completion\n# results and the directive.  It fills the 'out' and 'directive' vars.\n__assign_get_completion_results() {\n    local requestComp lastParam lastChar args\n\n    # Prepare the command to request completions for the program.\n    # Calling ${words[0]} instead of directly assign allows handling aliases\n    args=(\"${words[@]:1}\")\n    requestComp=\"${words[0]} __complete ${args[*]}\"\n\n    lastParam=${words[$((${#words[@]}-1))]}\n    lastChar=${lastParam:$((${#lastParam}-1)):1}\n    __assign_debug \"lastParam ${lastParam}, lastChar ${lastChar}\"\n\n    if [[ -z ${cur} \u0026\u0026 ${lastChar} != = ]]; then\n        # If the last parameter is complete (there is a space following it)\n        # We add an extra empty parameter so we can indicate this to the go method.\n        __assign_debug \"Adding extra empty parameter\"\n        requestComp=\"${requestComp} ''\"\n    fi\n\n    # When completing a flag with an = (e.g., assign -n=\u003cTAB\u003e)\n    # bash focuses on the part after the =, so we need to remove\n    # the flag part from $cur\n    if [[ ${cur} == -*=* ]]; then\n        cur=\"${cur#*=}\"\n    fi\n\n    __assign_debug \"Calling ${requestComp}\"\n    # Use eval to handle any environment variables and such\n    out=$(eval \"${requestComp}\" 2\u003e/dev/null)\n\n    # Extract the directive integer at the very end of the output following a colon (:)\n    directive=${out##*:}\n    # Remove the directive\n    out=${out%:*}\n    if [[ ${directive} == \"${out}\" ]]; then\n        # There is not directive specified\n        directive=0\n    fi\n    __assign_debug \"The completion directive is: ${directive}\"\n    __assign_debug \"The completions are: ${out}\"\n}\n\n__assign_process_completion_results() {\n    local shellCompDirectiveError=1\n    local shellCompDirectiveNoSpace=2\n    local shellCompDirectiveNoFileComp=4\n    local shellCompDirectiveFilterFileExt=8\n    local shellCompDirectiveFilterDirs=16\n    local shellCompDirectiveKeepOrder=32\n\n    if (((directive \u0026 shellCompDirectiveError) != 0)); then\n        # Error code.  No completion.\n        __assign_debug \"Received error from custom completion go code\"\n        return\n    else\n        if (((directive \u0026 shellCompDirectiveNoSpace) != 0)); then\n            if [[ $(type -t compopt) == builtin ]]; then\n                __assign_debug \"Activating no space\"\n                compopt -o nospace\n            else\n                __assign_debug \"No space directive not supported in this version of bash\"\n            fi\n        fi\n        if (((directive \u0026 shellCompDirectiveKeepOrder) != 0)); then\n            if [[ $(type -t compopt) == builtin ]]; then\n                # no sort isn't supported for bash less than \u003c 4.4\n                if [[ ${BASH_VERSINFO[0]} -lt 4 || ( ${BASH_VERSINFO[0]} -eq 4 \u0026\u0026 ${BASH_VERSINFO[1]} -lt 4 ) ]]; then\n                    __assign_debug \"No sort directive not supported in this version of bash\"\n                else\n                    __assign_debug \"Activating keep order\"\n                    compopt -o nosort\n                fi\n            else\n                __assign_debug \"No sort directive not supported in this version of bash\"\n            fi\n        fi\n        if (((directive \u0026 shellCompDirectiveNoFileComp) != 0)); then\n            if [[ $(type -t compopt) == builtin ]]; then\n                __assign_debug \"Activating no file completion\"\n                compopt +o default\n            else\n                __assign_debug \"No file completion directive not supported in this version of bash\"\n            fi\n        fi\n    fi\n\n    # Separate activeHelp from normal completions\n    local completions=()\n    local activeHelp=()\n    __assign_extract_activeHelp\n\n    if (((directive \u0026 shellCompDirectiveFilterFileExt) != 0)); then\n        # File extension filtering\n        local fullFilter=\"\" filter filteringCmd\n\n        # Do not use quotes around the $completions variable or else newline\n        # characters will be kept.\n        for filter in ${completions[*]}; do\n            fullFilter+=\"$filter|\"\n        done\n\n        filteringCmd=\"_filedir $fullFilter\"\n        __assign_debug \"File filtering command: $filteringCmd\"\n        $filteringCmd\n    elif (((directive \u0026 shellCompDirectiveFilterDirs) != 0)); then\n        # File completion for directories only\n\n        local subdir\n        subdir=${completions[0]}\n        if [[ -n $subdir ]]; then\n            __assign_debug \"Listing directories in $subdir\"\n            pushd \"$subdir\" \u003e/dev/null 2\u003e\u00261 \u0026\u0026 _filedir -d \u0026\u0026 popd \u003e/dev/null 2\u003e\u00261 || return\n        else\n            __assign_debug \"Listing directories in .\"\n            _filedir -d\n        fi\n    else\n        __assign_handle_completion_types\n    fi\n\n    __assign_handle_special_char \"$cur\" :\n    __assign_handle_special_char \"$cur\" =\n\n    # Print the activeHelp statements before we finish\n    __assign_handle_activeHelp\n}\n\n__assign_handle_activeHelp() {\n    # Print the activeHelp statements\n    if ((${#activeHelp[*]} != 0)); then\n        if [ -z $COMP_TYPE ]; then\n            # Bash v3 does not set the COMP_TYPE variable.\n            printf \"\\n\";\n            printf \"%s\\n\" \"${activeHelp[@]}\"\n            printf \"\\n\"\n            __assign_reprint_commandLine\n            return\n        fi\n\n        # Only print ActiveHelp on the second TAB press\n        if [ $COMP_TYPE -eq 63 ]; then\n            printf \"\\n\"\n            printf \"%s\\n\" \"${activeHelp[@]}\"\n\n            if ((${#COMPREPLY[*]} == 0)); then\n                # When there are no completion choices from the program, file completion\n                # may kick in if the program has not disabled it; in such a case, we want\n                # to know if any files will match what the user typed, so that we know if\n                # there will be completions presented, so that we know how to handle ActiveHelp.\n                # To find out, we actually trigger the file completion ourselves;\n                # the call to _filedir will fill COMPREPLY if files match.\n                if (((directive \u0026 shellCompDirectiveNoFileComp) == 0)); then\n                    __assign_debug \"Listing files\"\n                    _filedir\n                fi\n            fi\n\n            if ((${#COMPREPLY[*]} != 0)); then\n                # If there are completion choices to be shown, print a delimiter.\n                # Re-printing the command-line will automatically be done\n                # by the shell when it prints the completion choices.\n                printf -- \"--\"\n            else\n                # When there are no completion choices at all, we need\n                # to re-print the command-line since the shell will\n                # not be doing it itself.\n                __assign_reprint_commandLine\n            fi\n        elif [ $COMP_TYPE -eq 37 ] || [ $COMP_TYPE -eq 42 ]; then\n            # For completion type: menu-complete/menu-complete-backward and insert-completions\n            # the completions are immediately inserted into the command-line, so we first\n            # print the activeHelp message and reprint the command-line since the shell won't.\n            printf \"\\n\"\n            printf \"%s\\n\" \"${activeHelp[@]}\"\n\n            __assign_reprint_commandLine\n        fi\n    fi\n}\n\n__assign_reprint_commandLine() {\n    # The prompt format is only available from bash 4.4.\n    # We test if it is available before using it.\n    if (x=${PS1@P}) 2\u003e /dev/null; then\n        printf \"%s\" \"${PS1@P}${COMP_LINE[@]}\"\n    else\n        # Can't print the prompt.  Just print the\n        # text the user had typed, it is workable enough.\n        printf \"%s\" \"${COMP_LINE[@]}\"\n    fi\n}\n\n# Separate activeHelp lines from real completions.\n# Fills the $activeHelp and $completions arrays.\n__assign_extract_activeHelp() {\n    local activeHelpMarker=\"_activeHelp_ \"\n    local endIndex=${#activeHelpMarker}\n\n    while IFS='' read -r comp; do\n        [[ -z $comp ]] \u0026\u0026 continue\n\n        if [[ ${comp:0:endIndex} == $activeHelpMarker ]]; then\n            comp=${comp:endIndex}\n            __assign_debug \"ActiveHelp found: $comp\"\n            if [[ -n $comp ]]; then\n                activeHelp+=(\"$comp\")\n            fi\n        else\n            # Not an activeHelp line but a normal completion\n            completions+=(\"$comp\")\n        fi\n    done \u003c\u003c\u003c\"${out}\"\n}\n\n__assign_handle_completion_types() {\n    __assign_debug \"__assign_handle_completion_types: COMP_TYPE is $COMP_TYPE\"\n\n    case $COMP_TYPE in\n    37|42)\n        # Type: menu-complete/menu-complete-backward and insert-completions\n        # If the user requested inserting one completion at a time, or all\n        # completions at once on the command-line we must remove the descriptions.\n        # https://github.com/spf13/cobra/issues/1508\n\n        # If there are no completions, we don't need to do anything\n        (( ${#completions[@]} == 0 )) \u0026\u0026 return 0\n\n        local tab=$'\\t'\n\n        # Strip any description and escape the completion to handled special characters\n        IFS=$'\\n' read -ra completions -d '' \u003c \u003c(printf \"%q\\n\" \"${completions[@]%%$tab*}\")\n\n        # Only consider the completions that match\n        IFS=$'\\n' read -ra COMPREPLY -d '' \u003c \u003c(IFS=$'\\n'; compgen -W \"${completions[*]}\" -- \"${cur}\")\n\n        # compgen looses the escaping so we need to escape all completions again since they will\n        # all be inserted on the command-line.\n        IFS=$'\\n' read -ra COMPREPLY -d '' \u003c \u003c(printf \"%q\\n\" \"${COMPREPLY[@]}\")\n        ;;\n\n    *)\n        # Type: complete (normal completion)\n        __assign_handle_standard_completion_case\n        ;;\n    esac\n}\n\n__assign_handle_standard_completion_case() {\n    local tab=$'\\t'\n\n    # If there are no completions, we don't need to do anything\n    (( ${#completions[@]} == 0 )) \u0026\u0026 return 0\n\n    # Short circuit to optimize if we don't have descriptions\n    if [[ \"${completions[*]}\" != *$tab* ]]; then\n        # First, escape the completions to handle special characters\n        IFS=$'\\n' read -ra completions -d '' \u003c \u003c(printf \"%q\\n\" \"${completions[@]}\")\n        # Only consider the completions that match what the user typed\n        IFS=$'\\n' read -ra COMPREPLY -d '' \u003c \u003c(IFS=$'\\n'; compgen -W \"${completions[*]}\" -- \"${cur}\")\n\n        # compgen looses the escaping so, if there is only a single completion, we need to\n        # escape it again because it will be inserted on the command-line.  If there are multiple\n        # completions, we don't want to escape them because they will be printed in a list\n        # and we don't want to show escape characters in that list.\n        if (( ${#COMPREPLY[@]} == 1 )); then\n            COMPREPLY[0]=$(printf \"%q\" \"${COMPREPLY[0]}\")\n        fi\n        return 0\n    fi\n\n    local longest=0\n    local compline\n    # Look for the longest completion so that we can format things nicely\n    while IFS='' read -r compline; do\n        [[ -z $compline ]] \u0026\u0026 continue\n\n        # Before checking if the completion matches what the user typed,\n        # we need to strip any description and escape the completion to handle special\n        # characters because those escape characters are part of what the user typed.\n        # Don't call \"printf\" in a sub-shell because it will be much slower\n        # since we are in a loop.\n        printf -v comp \"%q\" \"${compline%%$tab*}\" \u0026\u003e/dev/null || comp=$(printf \"%q\" \"${compline%%$tab*}\")\n\n        # Only consider the completions that match\n        [[ $comp == \"$cur\"* ]] || continue\n\n        # The completions matches.  Add it to the list of full completions including\n        # its description.  We don't escape the completion because it may get printed\n        # in a list if there are more than one and we don't want show escape characters\n        # in that list.\n        COMPREPLY+=(\"$compline\")\n\n        # Strip any description before checking the length, and again, don't escape\n        # the completion because this length is only used when printing the completions\n        # in a list and we don't want show escape characters in that list.\n        comp=${compline%%$tab*}\n        if ((${#comp}\u003elongest)); then\n            longest=${#comp}\n        fi\n    done \u003c \u003c(printf \"%s\\n\" \"${completions[@]}\")\n\n    # If there is a single completion left, remove the description text and escape any special characters\n    if ((${#COMPREPLY[*]} == 1)); then\n        __assign_debug \"COMPREPLY[0]: ${COMPREPLY[0]}\"\n        COMPREPLY[0]=$(printf \"%q\" \"${COMPREPLY[0]%%$tab*}\")\n        __assign_debug \"Removed description from single completion, which is now: ${COMPREPLY[0]}\"\n    else\n        # Format the descriptions\n        __assign_format_comp_descriptions $longest\n    fi\n}\n\n__assign_handle_special_char()\n{\n    local comp=\"$1\"\n    local char=$2\n    if [[ \"$comp\" == *${char}* \u0026\u0026 \"$COMP_WORDBREAKS\" == *${char}* ]]; then\n        local word=${comp%\"${comp##*${char}}\"}\n        local idx=${#COMPREPLY[*]}\n        while ((--idx \u003e= 0)); do\n            COMPREPLY[idx]=${COMPREPLY[idx]#\"$word\"}\n        done\n    fi\n}\n\n__assign_format_comp_descriptions()\n{\n    local tab=$'\\t'\n    local comp desc maxdesclength\n    local longest=$1\n\n    local i ci\n    for ci in ${!COMPREPLY[*]}; do\n        comp=${COMPREPLY[ci]}\n        # Properly format the description string which follows a tab character if there is one\n        if [[ \"$comp\" == *$tab* ]]; then\n            __assign_debug \"Original comp: $comp\"\n            desc=${comp#*$tab}\n            comp=${comp%%$tab*}\n\n            # $COLUMNS stores the current shell width.\n            # Remove an extra 4 because we add 2 spaces and 2 parentheses.\n            maxdesclength=$(( COLUMNS - longest - 4 ))\n\n            # Make sure we can fit a description of at least 8 characters\n            # if we are to align the descriptions.\n            if ((maxdesclength \u003e 8)); then\n                # Add the proper number of spaces to align the descriptions\n                for ((i = ${#comp} ; i \u003c longest ; i++)); do\n                    comp+=\" \"\n                done\n            else\n                # Don't pad the descriptions so we can fit more text after the completion\n                maxdesclength=$(( COLUMNS - ${#comp} - 4 ))\n            fi\n\n            # If there is enough space for any description text,\n            # truncate the descriptions that are too long for the shell width\n            if ((maxdesclength \u003e 0)); then\n                if ((${#desc} \u003e maxdesclength)); then\n                    desc=${desc:0:$(( maxdesclength - 1 ))}\n                    desc+=\"…\"\n                fi\n                comp+=\"  ($desc)\"\n            fi\n            COMPREPLY[ci]=$comp\n            __assign_debug \"Final comp: $comp\"\n        fi\n    done\n}\n\n__start_assign()\n{\n    local cur prev words cword split\n\n    COMPREPLY=()\n\n    # Call _init_completion from the bash-completion package\n    # to prepare the arguments properly\n    if declare -F _init_completion \u003e/dev/null 2\u003e\u00261; then\n        _init_completion -n =: || return\n    else\n        __assign_init_completion -n =: || return\n    fi\n\n    __assign_debug\n    __assign_debug \"========= starting completion logic ==========\"\n    __assign_debug \"cur is ${cur}, words[*] is ${words[*]}, #words[@] is ${#words[@]}, cword is $cword\"\n\n    # The user could have moved the cursor backwards on the command-line.\n    # We need to trigger completion from the $cword location, so we need\n    # to truncate the command-line ($words) up to the $cword location.\n    words=(\"${words[@]:0:$cword+1}\")\n    __assign_debug \"Truncated words[*]: ${words[*]},\"\n\n    local out directive\n    __assign_get_completion_results\n    __assign_process_completion_results\n}\n\nif [[ $(type -t compopt) = \"builtin\" ]]; then\n    complete -o default -F __start_assign assign\nelse\n    complete -o default -o nospace -F __start_assign assign\nfi\n\n# ex: ts=4 sw=4 et filetype=sh\n",
+    "fish": "# fish completion for assign                               -*- shell-script -*-\n\nfunction __assign_debug\n    set -l file \"$BASH_COMP_DEBUG_FILE\"\n    if test -n \"$file\"\n        echo \"$argv\" \u003e\u003e $file\n    end\nend\n\nfunction __assign_perform_completion\n    __assign_debug \"Starting __assign_perform_completion\"\n\n    # Extract all args except the last one\n    set -l args (commandline -opc)\n    # Extract the last arg and escape it in case it is a space\n    set -l lastArg (string escape -- (commandline -ct))\n\n    __assign_debug \"args: $args\"\n    __assign_debug \"last arg: $lastArg\"\n\n    # Disable ActiveHelp which is not supported for fish shell\n    set -l requestComp \"ASSIGN_ACTIVE_HELP=0 $args[1] __complete $args[2..-1] $lastArg\"\n\n    __assign_debug \"Calling $requestComp\"\n    set -l results (eval $requestComp 2\u003e /dev/null)\n\n    # Some programs may output extra empty lines after the directive.\n    # Let's ignore them or else it will break completion.\n    # Ref: https://github.com/spf13/cobra/issues/1279\n    for line in $results[-1..1]\n        if test (string trim -- $line) = \"\"\n            # Found an empty line, remove it\n            set results $results[1..-2]\n        else\n            # Found non-empty line, we have our proper output\n            break\n        end\n    end\n\n    set -l comps $results[1..-2]\n    set -l directiveLine $results[-1]\n\n    # For Fish, when completing a flag with an = (e.g., \u003cprogram\u003e -n=\u003cTAB\u003e)\n    # completions must be prefixed with the flag\n    set -l flagPrefix (string match -r -- '-.*=' \"$lastArg\")\n\n    __assign_debug \"Comps: $comps\"\n    __assign_debug \"DirectiveLine: $directiveLine\"\n    __assign_debug \"flagPrefix: $flagPrefix\"\n\n    for comp in $comps\n        printf \"%s%s\\n\" \"$flagPrefix\" \"$comp\"\n    end\n\n    printf \"%s\\n\" \"$directiveLine\"\nend\n\n# this function limits calls to __assign_perform_completion, by caching the result behind $__assign_perform_completion_once_result\nfunction __assign_perform_completion_once\n    __assign_debug \"Starting __assign_perform_completion_once\"\n\n    if test -n \"$__assign_perform_completion_once_result\"\n        __assign_debug \"Seems like a valid result already exists, skipping __assign_perform_completion\"\n        return 0\n    end\n\n    set --global __assign_perform_completion_once_result (__assign_perform_completion)\n    if test -z \"$__assign_perform_completion_once_result\"\n        __assign_debug \"No completions, probably due to a failure\"\n        return 1\n    end\n\n    __assign_debug \"Performed completions and set __assign_perform_completion_once_result\"\n    return 0\nend\n\n# this function is used to clear the $__assign_perform_completion_once_result variable after completions are run\nfunction __assign_clear_perform_completion_once_result\n    __assign_debug \"\"\n    __assign_debug \"========= clearing previously set __assign_perform_completion_once_result variable ==========\"\n    set --erase __assign_perform_completion_once_result\n    __assign_debug \"Successfully erased the variable __assign_perform_completion_once_result\"\nend\n\nfunction __assign_requires_order_preservation\n    __assign_debug \"\"\n    __assign_debug \"========= checking if order preservation is required ==========\"\n\n    __assign_perform_completion_once\n    if test -z \"$__assign_perform_completion_once_result\"\n        __assign_debug \"Error determining if order preservation is required\"\n        return 1\n    end\n\n    set -l directive (string sub --start 2 $__assign_perform_completion_once_result[-1])\n    __assign_debug \"Directive is: $directive\"\n\n    set -l shellCompDirectiveKeepOrder 32\n    set -l keeporder (math (math --scale 0 $directive / $shellCompDirectiveKeepOrder) % 2)\n    __assign_debug \"Keeporder is: $keeporder\"\n\n    if test $keeporder -ne 0\n        __assign_debug \"This does require order preservation\"\n        return 0\n    end\n\n    __assign_debug \"This doesn't require order preservation\"\n    return 1\nend\n\n\n# This function does two things:\n# - Obtain the completions and store them in the global __assign_comp_results\n# - Return false if file completion should be performed\nfunction __assign_prepare_completions\n    __assign_debug \"\"\n    __assign_debug \"========= starting completion logic ==========\"\n\n    # Start fresh\n    set --erase __assign_comp_results\n\n    __assign_perform_completion_once\n    __assign_debug \"Completion results: $__assign_perform_completion_once_result\"\n\n    if test -z \"$__assign_perform_completion_once_result\"\n        __assign_debug \"No completion, probably due to a failure\"\n        # Might as well do file completion, in case it helps\n        return 1\n    end\n\n    set -l directive (string sub --start 2 $__assign_perform_completion_once_result[-1])\n    set --global __assign_comp_results $__assign_perform_completion_once_result[1..-2]\n\n    __assign_debug \"Completions are: $__assign_comp_results\"\n    __assign_debug \"Directive is: $directive\"\n\n    set -l shellCompDirectiveError 1\n    set -l shellCompDirectiveNoSpace 2\n    set -l shellCompDirectiveNoFileComp 4\n    set -l shellCompDirectiveFilterFileExt 8\n    set -l shellCompDirectiveFilterDirs 16\n\n    if test -z \"$directive\"\n        set directive 0\n    end\n\n    set -l compErr (math (math --scale 0 $directive / $shellCompDirectiveError) % 2)\n    if test $compErr -eq 1\n        __assign_debug \"Received error directive: aborting.\"\n        # Might as well do file completion, in case it helps\n        return 1\n    end\n\n    set -l filefilter (math (math --scale 0 $directive / $shellCompDirectiveFilterFileExt) % 2)\n    set -l dirfilter (math (math --scale 0 $directive / $shellCompDirectiveFilterDirs) % 2)\n    if test $filefilter -eq 1; or test $dirfilter -eq 1\n        __assign_debug \"File extension filtering or directory filtering not supported\"\n        # Do full file completion instead\n        return 1\n    end\n\n    set -l nospace (math (math --scale 0 $directive / $shellCompDirectiveNoSpace) % 2)\n    set -l nofiles (math (math --scale 0 $directive / $shellCompDirectiveNoFileComp) % 2)\n\n    __assign_debug \"nospace: $nospace, nofiles: $nofiles\"\n\n    # If we want to prevent a space, or if file completion is NOT disabled,\n    # we need to count the number of valid completions.\n    # To do so, we will filter on prefix as the completions we have received\n    # may not already be filtered so as to allow fish to match on different\n    # criteria than the prefix.\n    if test $nospace -ne 0; or test $nofiles -eq 0\n        set -l prefix (commandline -t | string escape --style=regex)\n        __assign_debug \"prefix: $prefix\"\n\n        set -l completions (string match -r -- \"^$prefix.*\" $__assign_comp_results)\n        set --global __assign_comp_results $completions\n        __assign_debug \"Filtered completions are: $__assign_comp_results\"\n\n        # Important not to quote the variable for count to work\n        set -l numComps (count $__assign_comp_results)\n        __assign_debug \"numComps: $numComps\"\n\n        if test $numComps -eq 1; and test $nospace -ne 0\n            # We must first split on \\t to get rid of the descriptions to be\n            # able to check what the actual completion will be.\n            # We don't need descriptions anyway since there is only a single\n            # real completion which the shell will expand immediately.\n            set -l split (string split --max 1 \\t $__assign_comp_results[1])\n\n            # Fish won't add a space if the completion ends with any\n            # of the following characters: @=/:.,\n            set -l lastChar (string sub -s -1 -- $split)\n            if not string match -r -q \"[@=/:.,]\" -- \"$lastChar\"\n                # In other cases, to support the \"nospace\" directive we trick the shell\n                # by outputting an extra, longer completion.\n                __assign_debug \"Adding second completion to perform nospace directive\"\n                set --global __assign_comp_results $split[1] $split[1].\n                __assign_debug \"Completions are now: $__assign_comp_results\"\n            end\n        end\n\n        if test $numComps -eq 0; and test $nofiles -eq 0\n            # To be consistent with bash and zsh, we only trigger file\n            # completion when there are no other completions\n            __assign_debug \"Requesting file completion\"\n            return 1\n        end\n    end\n\n    return 0\nend\n\n# Since Fish completions are only loaded once the user triggers them, we trigger them ourselves\n# so we can properly delete any completions provided by another script.\n# Only do this if the program can be found, or else fish may print some errors; besides,\n# the existing completions will only be loaded if the program can be found.\nif type -q \"assign\"\n    # The space after the program name is essential to trigger completion for the program\n    # and not completion of the program name itself.\n    # Also, we use '\u003e /dev/null 2\u003e\u00261' since '\u0026\u003e' is not supported in older versions of fish.\n    complete --do-complete \"assign \" \u003e /dev/null 2\u003e\u00261\nend\n\n# Remove any pre-existing completions for the program since we will be handling all of them.\ncomplete -c assign -e\n\n# this will get called after the two calls below and clear the $__assign_perform_completion_once_result global\ncomplete -c assign -n '__assign_clear_perform_completion_once_result'\n# The call to __assign_prepare_completions will setup __assign_comp_results\n# which provides the program's completion choices.\n# If this doesn't require order preservation, we don't use the -k flag\ncomplete -c assign -n 'not __assign_requires_order_preservation \u0026\u0026 __assign_prepare_completions' -f -a '$__assign_comp_results'\n# otherwise we use the -k flag\ncomplete -k -c assign -n '__assign_requires_order_preservation \u0026\u0026 __assign_prepare_completions' -f -a '$__assign_comp_results'\n",
+    "zsh": "#compdef assign\ncompdef _assign assign\n\n# zsh completion for assign                               -*- shell-script -*-\n\n__assign_debug()\n{\n    local file=\"$BASH_COMP_DEBUG_FILE\"\n    if [[ -n ${file} ]]; then\n        echo \"$*\" \u003e\u003e \"${file}\"\n    fi\n}\n\n_assign()\n{\n    local shellCompDirectiveError=1\n    local shellCompDirectiveNoSpace=2\n    local shellCompDirectiveNoFileComp=4\n    local shellCompDirectiveFilterFileExt=8\n    local shellCompDirectiveFilterDirs=16\n    local shellCompDirectiveKeepOrder=32\n\n    local lastParam lastChar flagPrefix requestComp out directive comp lastComp noSpace keepOrder\n    local -a completions\n\n    __assign_debug \"\\n========= starting completion logic ==========\"\n    __assign_debug \"CURRENT: ${CURRENT}, words[*]: ${words[*]}\"\n\n    # The user could have moved the cursor backwards on the command-line.\n    # We need to trigger completion from the $CURRENT location, so we need\n    # to truncate the command-line ($words) up to the $CURRENT location.\n    # (We cannot use $CURSOR as its value does not work when a command is an alias.)\n    words=(\"${=words[1,CURRENT]}\")\n    __assign_debug \"Truncated words[*]: ${words[*]},\"\n\n    lastParam=${words[-1]}\n    lastChar=${lastParam[-1]}\n    __assign_debug \"lastParam: ${lastParam}, lastChar: ${lastChar}\"\n\n    # For zsh, when completing a flag with an = (e.g., assign -n=\u003cTAB\u003e)\n    # completions must be prefixed with the flag\n    setopt local_options BASH_REMATCH\n    if [[ \"${lastParam}\" =~ '-.*=' ]]; then\n        # We are dealing with a flag with an =\n        flagPrefix=\"-P ${BASH_REMATCH}\"\n    fi\n\n    # Prepare the command to obtain completions\n    requestComp=\"${words[1]} __complete ${words[2,-1]}\"\n    if [ \"${lastChar}\" = \"\" ]; then\n        # If the last parameter is complete (there is a space following it)\n        # We add an extra empty parameter so we can indicate this to the go completion code.\n        __assign_debug \"Adding extra empty parameter\"\n        requestComp=\"${requestComp} \\\"\\\"\"\n    fi\n\n    __assign_debug \"About to call: eval ${requestComp}\"\n\n    # Use eval to handle any environment variables and such\n    out=$(eval ${requestComp} 2\u003e/dev/null)\n    __assign_debug \"completion output: ${out}\"\n\n    # Extract the directive integer following a : from the last line\n    local lastLine\n    while IFS='\\n' read -r line; do\n        lastLine=${line}\n    done \u003c \u003c(printf \"%s\\n\" \"${out[@]}\")\n    __assign_debug \"last line: ${lastLine}\"\n\n    if [ \"${lastLine[1]}\" = : ]; then\n        directive=${lastLine[2,-1]}\n        # Remove the directive including the : and the newline\n        local suffix\n        (( suffix=${#lastLine}+2))\n        out=${out[1,-$suffix]}\n    else\n        # There is no directive specified.  Leave $out as is.\n        __assign_debug \"No directive found.  Setting do default\"\n        directive=0\n    fi\n\n    __assign_debug \"directive: ${directive}\"\n    __assign_debug \"completions: ${out}\"\n    __assign_debug \"flagPrefix: ${flagPrefix}\"\n\n    if [ $((directive \u0026 shellCompDirectiveError)) -ne 0 ]; then\n        __assign_debug \"Completion received error. Ignoring completions.\"\n        return\n    fi\n\n    local activeHelpMarker=\"_activeHelp_ \"\n    local endIndex=${#activeHelpMarker}\n    local startIndex=$((${#activeHelpMarker}+1))\n    local hasActiveHelp=0\n    while IFS='\\n' read -r comp; do\n        # Check if this is an activeHelp statement (i.e., prefixed with $activeHelpMarker)\n        if [ \"${comp[1,$endIndex]}\" = \"$activeHelpMarker\" ];then\n            __assign_debug \"ActiveHelp found: $comp\"\n            comp=\"${comp[$startIndex,-1]}\"\n            if [ -n \"$comp\" ]; then\n                compadd -x \"${comp}\"\n                __assign_debug \"ActiveHelp will need delimiter\"\n                hasActiveHelp=1\n            fi\n\n            continue\n        fi\n\n        if [ -n \"$comp\" ]; then\n            # If requested, completions are returned with a description.\n            # The description is preceded by a TAB character.\n            # For zsh's _describe, we need to use a : instead of a TAB.\n            # We first need to escape any : as part of the completion itself.\n            comp=${comp//:/\\\\:}\n\n            local tab=\"$(printf '\\t')\"\n            comp=${comp//$tab/:}\n\n            __assign_debug \"Adding completion: ${comp}\"\n            completions+=${comp}\n            lastComp=$comp\n        fi\n    done \u003c \u003c(printf \"%s\\n\" \"${out[@]}\")\n\n    # Add a delimiter after the activeHelp statements, but only if:\n    # - there are completions following the activeHelp statements, or\n    # - file completion will be performed (so there will be choices after the activeHelp)\n    if [ $hasActiveHelp -eq 1 ]; then\n        if [ ${#completions} -ne 0 ] || [ $((directive \u0026 shellCompDirectiveNoFileComp)) -eq 0 ]; then\n            __assign_debug \"Adding activeHelp delimiter\"\n            compadd -x \"--\"\n            hasActiveHelp=0\n        fi\n    fi\n\n    if [ $((directive \u0026 shellCompDirectiveNoSpace)) -ne 0 ]; then\n        __assign_debug \"Activating nospace.\"\n        noSpace=\"-S ''\"\n    fi\n\n    if [ $((directive \u0026 shellCompDirectiveKeepOrder)) -ne 0 ]; then\n        __assign_debug \"Activating keep order.\"\n        keepOrder=\"-V\"\n    fi\n\n    if [ $((directive \u0026 shellCompDirectiveFilterFileExt)) -ne 0 ]; then\n        # File extension filtering\n        local filteringCmd\n        filteringCmd='_files'\n        for filter in ${completions[@]}; do\n            if [ ${filter[1]} != '*' ]; then\n                # zsh requires a glob pattern to do file filtering\n                filter=\"\\*.$filter\"\n            fi\n            filteringCmd+=\" -g $filter\"\n        done\n        filteringCmd+=\" ${flagPrefix}\"\n\n        __assign_debug \"File filtering command: $filteringCmd\"\n        _arguments '*:filename:'\"$filteringCmd\"\n    elif [ $((directive \u0026 shellCompDirectiveFilterDirs)) -ne 0 ]; then\n        # File completion for directories only\n        local subdir\n        subdir=\"${completions[1]}\"\n        if [ -n \"$subdir\" ]; then\n            __assign_debug \"Listing directories in $subdir\"\n            pushd \"${subdir}\" \u003e/dev/null 2\u003e\u00261\n        else\n            __assign_debug \"Listing directories in .\"\n        fi\n\n        local result\n        _arguments '*:dirname:_files -/'\" ${flagPrefix}\"\n        result=$?\n        if [ -n \"$subdir\" ]; then\n            popd \u003e/dev/null 2\u003e\u00261\n        fi\n        return $result\n    else\n        __assign_debug \"Calling _describe\"\n        if eval _describe $keepOrder \"completions\" completions $flagPrefix $noSpace; then\n            __assign_debug \"_describe found some completions\"\n\n            # Return the success of having called _describe\n            return 0\n        else\n            __assign_debug \"_describe did not find completions.\"\n            __assign_debug \"Checking if we should do file completion.\"\n            if [ $((directive \u0026 shellCompDirectiveNoFileComp)) -ne 0 ]; then\n                __assign_debug \"deactivating file completion\"\n\n                # We must return an error code here to let zsh know that there were no\n                # completions found by _describe; this is what will trigger other\n                # matching algorithms to attempt to find completions.\n                # For example zsh can match letters in the middle of words.\n                return 1\n            else\n                # Perform file completion\n                __assign_debug \"Activating file completion\"\n\n                # We must return the result of this command, so it must be the\n                # last command, or else we must store its result to return it.\n                _arguments '*:filename:_files'\" ${flagPrefix}\"\n            fi\n        fi\n    fi\n}\n\n# don't run the completion function when being source-ed or eval-ed\nif [ \"$funcstack[1]\" = \"_assign\" ]; then\n    _assign\nfi\n"
+  }
+}

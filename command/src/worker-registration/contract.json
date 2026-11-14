@@ -1,0 +1,2175 @@
+{
+  "audience": "private-cli",
+  "sources": {
+    "assign-core/contracts/api/src/paths/worker-catalog.v1.json": "d68e68b9e089f5ef83207a05b22c38605bf746ddff7fff6c20f1b5a53392ee0c",
+    "assign-core/internal/cliauth/service.go": "2f7754f1baa8e2b70c7d0567bea87b1ec11515664c12ed685c842a091bbb1f72",
+    "assign-core/internal/httpapi/worker_catalog.go": "c82f646e9830d90e1f723a3cb3d8bcca52d0720a416a5db4e36d4c63a00e8282",
+    "assign-core/contracts/api/src/components/shared.yaml": "8c067491c8ca250fab4838030420c7fb5ba62c90b66d70a657c6bd20b65041ac",
+    "openapi-spec/src/components/comments.yaml": "48fe38a850b0426863f43fbed79b02847c1ffe3e1002d52f5f7fa3eaa53a1028",
+    "openapi-spec/src/components/contract.yaml": "fb3db0fdcf3d0a6b85b468dfe3d1aaa6c14efa8454e23f8af755ddc182b9076d",
+    "openapi-spec/src/components/errors.yaml": "a76cd3b4110d55c2e4a4321213b65ef329585ae7f6cca04a70ee4445b09f9cda",
+    "openapi-spec/src/components/problems.yaml": "4f8a0ed5c0f3ee614163be1e253b646ad7aebce4fd0994767b23069dd2456108",
+    "openapi-spec/src/components/shared.yaml": "40e527373e2a349131af63fa354442e2afe465622b95ddea2ce01224e390ef99"
+  },
+  "bearerPrefix": "cli_at_",
+  "paths": {
+    "/api/v1/cli/workers": {
+      "post": {
+        "operationId": "registerCLIWorker",
+        "summary": "Register or reconcile one installation/profile intent for the current human with Project write access.",
+        "description": "Register or reconcile one installation/profile intent for the current human with Project write access. Body limit 16 KiB. Owner quota 60/minute with burst 10. An exact replay returns the same IDs with current revisions. On conflict or uncertain response read the original receipt. A copied installation requires active-work reconciliation and revocation before new proof and intents.",
+        "security": [
+          {
+            "developerAccessToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "cli_oauth_grant"
+          ],
+          "required_scope": "assign:write",
+          "client_selects_owner": false,
+          "binding": "Only assign-cli client grants. The locked exact access token determines the current human and Workspace."
+        },
+        "responses": {
+          "200": {
+            "description": "Owner-private worker metadata.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerCatalogItemV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CLIWorkerRegistrationV1"
+              }
+            }
+          },
+          "x-assign-max-bytes": 16384
+        }
+      },
+      "get": {
+        "operationId": "listCLIWorkers",
+        "summary": "List the current owner’s accessible workers in the credential-selected Workspace.",
+        "description": "List the current owner’s accessible workers in the credential-selected Workspace. Project authority is rechecked; short and empty pages may have a continuation.",
+        "security": [
+          {
+            "developerAccessToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "cli_oauth_grant"
+          ],
+          "required_scope": "assign:read",
+          "client_selects_owner": false,
+          "binding": "Only assign-cli client grants. The locked exact access token determines the current human and Workspace."
+        },
+        "responses": {
+          "200": {
+            "description": "Owner-private worker metadata.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerCatalogPageV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/cli/workers/{worker_id}": {
+      "get": {
+        "operationId": "showCLIWorker",
+        "summary": "Read one worker with current owner and Project read authority.",
+        "description": "Read one worker with current owner and Project read authority. Hidden or missing workers return the same error.",
+        "security": [
+          {
+            "developerAccessToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "cli_oauth_grant"
+          ],
+          "required_scope": "assign:read",
+          "client_selects_owner": false,
+          "binding": "Only assign-cli client grants. The locked exact access token determines the current human and Workspace."
+        },
+        "responses": {
+          "200": {
+            "description": "Owner-private worker metadata.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerCatalogItemV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "parameters": [
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/cli/workers/registration-receipts/{enrollment_intent}/{profile_intent}": {
+      "get": {
+        "operationId": "getCLIWorkerRegistrationReceipt",
+        "summary": "Recover the original registration by its persisted owner-scoped intent pair.",
+        "description": "Recover the original registration by its persisted owner-scoped intent pair. Requires current Project read authority. Returns current metadata and stable IDs without credential issuance.",
+        "security": [
+          {
+            "developerAccessToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "cli_oauth_grant"
+          ],
+          "required_scope": "assign:read",
+          "client_selects_owner": false,
+          "binding": "Only assign-cli client grants. The locked exact access token determines the current human and Workspace."
+        },
+        "responses": {
+          "200": {
+            "description": "Owner-private worker metadata.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerCatalogItemV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "parameters": [
+          {
+            "name": "enrollment_intent",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "profile_intent",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/cli/workers/{worker_id}/policy": {
+      "get": {
+        "operationId": "readCLIWorkerPolicy",
+        "summary": "Read the owner-private worker profile and policy.",
+        "description": "Requires the current interactive CLI human owner and Project read access. Returns saved and independently device-applied policy; applied is null before acknowledgment.",
+        "security": [
+          {
+            "developerAccessToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "cli_oauth_grant"
+          ],
+          "required_scope": "assign:read",
+          "client_selects_owner": false,
+          "binding": "Only assign-cli client grants. The locked exact access token determines the current human and Workspace."
+        },
+        "responses": {
+          "200": {
+            "description": "Private worker configuration and local authorization state.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerPolicyStateV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "parameters": [
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "updateCLIWorkerPolicy",
+        "summary": "CAS edit or control the owner-private worker profile.",
+        "description": "Requires the interactive CLI human owner, write scope and current Core Project write access. Replacing policy must stay inside current Workspace/Project/Task ceilings. Empty allowlists deny. Local scope IDs never carry paths or credentials. Push or PR requires an isolated branch. CAS applies to desired state only; device acknowledgment is separate. Pause blocks new admission; resume does not launch. Revoke fences this profile through the worker credential lifecycle. Limit 16 KiB and a shared 60/minute owner quota with burst 10.",
+        "security": [
+          {
+            "developerAccessToken": []
+          }
+        ],
+        "x-assign-authority": {
+          "authority_profile": "independent-protocol",
+          "credentials": [
+            "cli_oauth_grant"
+          ],
+          "required_scope": "assign:write",
+          "client_selects_owner": false,
+          "binding": "Only assign-cli client grants. The locked exact access token determines the current human and Workspace."
+        },
+        "responses": {
+          "200": {
+            "description": "Private worker configuration and local authorization state.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerPolicyStateV1"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "409": {
+            "description": "Revision changed or profile is revoked; reconcile current authorized state.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControlNoStore"
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CLIWorkerPolicyConflictV1"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProductProblem"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/MaintenanceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/ProductProblem"
+          }
+        },
+        "parameters": [
+          {
+            "name": "worker_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CLIWorkerPolicyUpdateV1"
+              }
+            }
+          },
+          "x-assign-max-bytes": 16384
+        }
+      }
+    }
+  },
+  "components": {
+    "headers": {
+      "CacheControlNoStore": {
+        "description": "Prevents storage of error responses by clients and intermediaries.",
+        "schema": {
+          "type": "string",
+          "const": "no-store"
+        }
+      },
+      "AssignRequestID": {
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": "Assign-Request-ID on every response; X-Request-ID is its correlation alias."
+      },
+      "ContentTypeOptions": {
+        "description": "Prevents user agents from MIME-sniffing the response.",
+        "schema": {
+          "type": "string",
+          "const": "nosniff"
+        }
+      },
+      "AssignAPIVersion": {
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": "Assign-API-Version diagnostic, never authorization or an old-contract selector."
+      },
+      "AssignServerVersion": {
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": "Assign-Server-Version diagnostic, independent artifact version."
+      },
+      "WWWAuthenticate": {
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": "Applicable bearer challenge on product authentication failures."
+      },
+      "AssignLimit": {
+        "schema": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^version=1; kind=(rate|cost|quota|concurrency|entitlement|overload|availability); scope=(principal|peer|upstream|workspace|session|service); policy=[a-z]+(?:[._][a-z]+)*; unit=(request|query|byte|connection|credit)(?:; cost=[1-9][0-9]*)?(?:; limit=[1-9][0-9]*; remaining=[0-9]+)?(?:; reset=[0-9]+)?$"
+        },
+        "description": "Assign application limit metadata version 1, independent of draft IETF RateLimit fields. The closed kind/scope/policy/unit labels identify the applicable existing budget, never a bucket, credential, actor identifier or private queue depth. The search class is query cost (one admitted query unit), not paid entitlement. cost is the units required by this request; limit/remaining are window units when known; reset is Unix seconds. Concurrent and entitlement outcomes omit unknown counters. A reset or Retry-After is earliest retry guidance, not guaranteed admission. Honor Retry-After within the caller deadline, use bounded backoff with jitter and do not loop automatically on quota/entitlement failures."
+      },
+      "AssignDeadlineMs": {
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "description": "Remaining request time budget at admission in milliseconds, capped by any earlier deadline already applied to the request. The value is diagnostic; client-supplied values do not extend work. Cancellation is cooperative and bounds work that observes it. A timeout or disconnect does not prove that a committed mutation rolled back; recover using the operation's retained idempotency key/receipt before issuing another mutation. Committed responses are preserved."
+      },
+      "RetryAfter": {
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": "Retry-After delay-seconds or HTTP-date; honor within the caller deadline."
+      }
+    },
+    "schemas": {
+      "CLIWorkerCatalogItemV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "device_id",
+          "project_id",
+          "name",
+          "runner_kind",
+          "runner_version",
+          "revision",
+          "applied_revision",
+          "readiness",
+          "blockers",
+          "connection_state"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "device_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "At most 256 UTF-8 bytes, no controls, and nonblank."
+          },
+          "runner_kind": {
+            "type": "string",
+            "enum": [
+              "codex"
+            ]
+          },
+          "runner_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "At most 128 UTF-8 bytes, no controls, and nonblank."
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "applied_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "readiness": {
+            "type": "string",
+            "enum": [
+              "pending-apply",
+              "offline",
+              "revoked",
+              "paused",
+              "pending-local-consent",
+              "connected"
+            ]
+          },
+          "blockers": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1,
+            "items": {
+              "type": "string",
+              "enum": [
+                "device-offline",
+                "worker-revoked",
+                "profile-revision-not-applied",
+                "worker-paused",
+                "local-authorization-required",
+                "device-repair-required",
+                "task-admission-required"
+              ]
+            }
+          },
+          "connection_state": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "online",
+              "repair-required",
+              "revoked"
+            ]
+          }
+        }
+      },
+      "ErrorResponse": {
+        "$ref": "#/components/schemas/ProblemDetails"
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "instance",
+          "code",
+          "request_id",
+          "retryable"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://docs\\.assign\\.so/errors/[a-z][a-z0-9_]*$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1
+          },
+          "instance": {
+            "type": "string",
+            "pattern": "^urn:assign:problem:[A-Za-z0-9_-]+$"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "Domain-specific refusal discriminator. code and type identify the canonical error category; reason preserves the precise domain cause."
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Safe domain metadata, such as affected feature keys or counts. Field violations also appear in errors with a JSON Pointer."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          }
+        },
+        "description": "RFC 9457 product errors only, application/problem+json and Cache-Control no-store. instance is an opaque occurrence identifier, never the request URL. Clients preserve unknown extensions and branch on code/type; protocol-native errors are separate."
+      },
+      "FieldError": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "additionalProperties": true,
+        "anyOf": [
+          {
+            "required": [
+              "pointer"
+            ]
+          },
+          {
+            "required": [
+              "parameter"
+            ]
+          }
+        ],
+        "properties": {
+          "pointer": {
+            "type": "string",
+            "pattern": "^(/([^~/]|~[01])*)*$"
+          },
+          "parameter": {
+            "type": "string",
+            "minLength": 1
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "MalformedRequestProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 400
+              },
+              "code": {
+                "const": "malformed_request"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/malformed_request"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "UnauthenticatedProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 401
+              },
+              "code": {
+                "const": "unauthenticated"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/unauthenticated"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "PaymentRequiredProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 402
+              },
+              "code": {
+                "const": "payment_required"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/payment_required"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "ForbiddenProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 403
+              },
+              "code": {
+                "const": "forbidden"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/forbidden"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "NotFoundProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 404
+              },
+              "code": {
+                "const": "not_found"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/not_found"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "MethodNotAllowedProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 405
+              },
+              "code": {
+                "const": "method_not_allowed"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/method_not_allowed"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "NotAcceptableProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 406
+              },
+              "code": {
+                "const": "not_acceptable"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/not_acceptable"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "ConflictProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 409
+              },
+              "code": {
+                "const": "conflict"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/conflict"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "IdempotencyKeyConflictProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 409
+              },
+              "code": {
+                "const": "idempotency_key_conflict"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/idempotency_key_conflict"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "OperationInProgressProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 409
+              },
+              "code": {
+                "const": "operation_in_progress"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/operation_in_progress"
+              },
+              "retryable": {
+                "const": true
+              }
+            }
+          }
+        ]
+      },
+      "GoneProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 410
+              },
+              "code": {
+                "const": "gone"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/gone"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "PreconditionFailedProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 412
+              },
+              "code": {
+                "const": "precondition_failed"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/precondition_failed"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "ContentTooLargeProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 413
+              },
+              "code": {
+                "const": "content_too_large"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/content_too_large"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "UnsupportedMediaTypeProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 415
+              },
+              "code": {
+                "const": "unsupported_media_type"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/unsupported_media_type"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "ValidationFailedProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 422
+              },
+              "code": {
+                "const": "validation_failed"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/validation_failed"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "LockedProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 423
+              },
+              "code": {
+                "const": "locked"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/locked"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "PreconditionRequiredProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 428
+              },
+              "code": {
+                "const": "precondition_required"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/precondition_required"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "RateLimitedProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 429
+              },
+              "code": {
+                "const": "rate_limited"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/rate_limited"
+              },
+              "retryable": {
+                "const": true
+              }
+            }
+          }
+        ]
+      },
+      "InternalErrorProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 500
+              },
+              "code": {
+                "const": "internal_error"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/internal_error"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "NotImplementedProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 501
+              },
+              "code": {
+                "const": "not_implemented"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/not_implemented"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        ]
+      },
+      "BadGatewayProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 502
+              },
+              "code": {
+                "const": "bad_gateway"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/bad_gateway"
+              },
+              "retryable": {
+                "const": true
+              }
+            }
+          }
+        ]
+      },
+      "ServiceUnavailableProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 503
+              },
+              "code": {
+                "const": "service_unavailable"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/service_unavailable"
+              },
+              "retryable": {
+                "const": true
+              }
+            }
+          }
+        ]
+      },
+      "GatewayTimeoutProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": 504
+              },
+              "code": {
+                "const": "gateway_timeout"
+              },
+              "type": {
+                "const": "https://docs.assign.so/errors/gateway_timeout"
+              },
+              "retryable": {
+                "const": true
+              }
+            }
+          }
+        ]
+      },
+      "CLIWorkerRegistrationV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "project_id",
+          "enrollment_intent",
+          "profile_intent",
+          "installation_key",
+          "repository_digest",
+          "name",
+          "runner_kind",
+          "runner_version"
+        ],
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrollment_intent": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profile_intent": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "installation_key": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "writeOnly": true,
+            "description": "Protected random 32-byte installation proof, hex encoded. Persist before sending. Never log."
+          },
+          "repository_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "description": "SHA-256 of the locally observed canonical repository identity. Private metadata without authority."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "At most 256 UTF-8 bytes, no controls, and nonblank."
+          },
+          "runner_kind": {
+            "type": "string",
+            "enum": [
+              "codex"
+            ]
+          },
+          "runner_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "At most 128 UTF-8 bytes, no controls, and nonblank."
+          }
+        }
+      },
+      "CLIWorkerCatalogPageV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "next_cursor"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/CLIWorkerCatalogItemV1"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Opaque, owner/Workspace-bound continuation. May accompany a short or empty page."
+          }
+        }
+      },
+      "CLIWorkerPolicyStateV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "worker_id",
+          "name",
+          "saved_revision",
+          "applied_revision",
+          "authorization_state",
+          "paused",
+          "revoked",
+          "saved",
+          "applied"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1
+          },
+          "worker_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "At most 256 UTF-8 bytes, no controls, and nonblank."
+          },
+          "saved_revision": {
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          "applied_revision": {
+            "type": "integer",
+            "minimum": 0,
+            "format": "int64"
+          },
+          "authorization_state": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "pending-apply",
+              "pending-local-consent"
+            ]
+          },
+          "paused": {
+            "type": "boolean"
+          },
+          "revoked": {
+            "type": "boolean"
+          },
+          "saved": {
+            "$ref": "#/components/schemas/CLIWorkerPolicyV1"
+          },
+          "applied": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CLIWorkerPolicyV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "CLIWorkerPolicyV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "grant",
+          "native"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1
+          },
+          "grant": {
+            "$ref": "#/components/schemas/CLIWorkerGrantV1"
+          },
+          "native": {
+            "$ref": "#/components/schemas/CLIWorkerNativePolicyV1"
+          }
+        }
+      },
+      "CLIWorkerGrantV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workspace_ids",
+          "project_ids",
+          "repository_digests",
+          "task_ids",
+          "operations",
+          "allow_assign_to_self"
+        ],
+        "properties": {
+          "workspace_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 1,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "project_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 32,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "repository_digests": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 32,
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "task_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 100,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "operations": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 6,
+            "items": {
+              "type": "string",
+              "enum": [
+                "context",
+                "read",
+                "comment",
+                "progress",
+                "artifact",
+                "finalize"
+              ]
+            }
+          },
+          "allow_assign_to_self": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CLIWorkerNativePolicyV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "local_scope_ids",
+          "branch",
+          "push",
+          "pull_request",
+          "publish",
+          "elapsed_seconds",
+          "output_bytes",
+          "concurrency"
+        ],
+        "properties": {
+          "local_scope_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 32,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "branch": {
+            "type": "string",
+            "enum": [
+              "none",
+              "isolated"
+            ]
+          },
+          "push": {
+            "type": "boolean"
+          },
+          "pull_request": {
+            "type": "boolean"
+          },
+          "publish": {
+            "type": "boolean"
+          },
+          "elapsed_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7200
+          },
+          "output_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 26214400
+          },
+          "concurrency": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1
+          }
+        }
+      },
+      "CLIWorkerPolicyConflictV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "instance",
+          "code",
+          "request_id",
+          "retryable",
+          "reason",
+          "current"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "const": 409
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri"
+          },
+          "code": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "const": "worker_policy_conflict"
+          },
+          "current": {
+            "$ref": "#/components/schemas/CLIWorkerPolicyStateV1"
+          }
+        }
+      },
+      "CLIWorkerPolicyUpdateV1": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_revision"
+        ],
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "At most 256 UTF-8 bytes, no controls, and nonblank."
+          },
+          "policy": {
+            "$ref": "#/components/schemas/CLIWorkerPolicyV1"
+          },
+          "control": {
+            "type": "string",
+            "enum": [
+              "pause",
+              "resume",
+              "revoke"
+            ]
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "control"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "name"
+                  ]
+                },
+                {
+                  "required": [
+                    "policy"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "anyOf": [
+              {
+                "required": [
+                  "name"
+                ]
+              },
+              {
+                "required": [
+                  "policy"
+                ]
+              }
+            ],
+            "not": {
+              "required": [
+                "control"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "The request is malformed or fails validation.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/CacheControlNoStore"
+          },
+          "X-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "X-Content-Type-Options": {
+            "$ref": "#/components/headers/ContentTypeOptions"
+          },
+          "Assign-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "Assign-API-Version": {
+            "$ref": "#/components/headers/AssignAPIVersion"
+          },
+          "Assign-Server-Version": {
+            "$ref": "#/components/headers/AssignServerVersion"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Authentication is missing, invalid, expired, or revoked.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/CacheControlNoStore"
+          },
+          "X-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "X-Content-Type-Options": {
+            "$ref": "#/components/headers/ContentTypeOptions"
+          },
+          "Assign-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "Assign-API-Version": {
+            "$ref": "#/components/headers/AssignAPIVersion"
+          },
+          "Assign-Server-Version": {
+            "$ref": "#/components/headers/AssignServerVersion"
+          },
+          "WWW-Authenticate": {
+            "$ref": "#/components/headers/WWWAuthenticate"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The request is forbidden.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/CacheControlNoStore"
+          },
+          "X-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "X-Content-Type-Options": {
+            "$ref": "#/components/headers/ContentTypeOptions"
+          },
+          "Assign-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "Assign-API-Version": {
+            "$ref": "#/components/headers/AssignAPIVersion"
+          },
+          "Assign-Server-Version": {
+            "$ref": "#/components/headers/AssignServerVersion"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "ProductProblem": {
+        "description": "An HTTP admission, validation, domain or availability failure. The status and code select a catalog entry. Errors use no-store; 401 includes WWW-Authenticate, 405 includes Allow, and 429/503 include Retry-After. Stream errors use this response only before the stream is committed.",
+        "headers": {
+          "Assign-Limit": {
+            "$ref": "#/components/headers/AssignLimit"
+          },
+          "Assign-Deadline-Ms": {
+            "$ref": "#/components/headers/AssignDeadlineMs"
+          },
+          "Cache-Control": {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "no-store"
+              ]
+            }
+          },
+          "Assign-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "X-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "Assign-API-Version": {
+            "$ref": "#/components/headers/AssignAPIVersion"
+          },
+          "Assign-Server-Version": {
+            "$ref": "#/components/headers/AssignServerVersion"
+          },
+          "WWW-Authenticate": {
+            "$ref": "#/components/headers/WWWAuthenticate"
+          },
+          "Allow": {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "Retry-After": {
+            "$ref": "#/components/headers/RetryAfter"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/MalformedRequestProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/UnauthenticatedProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/PaymentRequiredProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/ForbiddenProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/NotFoundProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/MethodNotAllowedProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/NotAcceptableProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/ConflictProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/IdempotencyKeyConflictProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/OperationInProgressProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/GoneProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/PreconditionFailedProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/ContentTooLargeProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/UnsupportedMediaTypeProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/ValidationFailedProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/LockedProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/PreconditionRequiredProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/RateLimitedProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/InternalErrorProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/NotImplementedProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/BadGatewayProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/ServiceUnavailableProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/GatewayTimeoutProblem"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The mutation conflicts with current resource state or idempotency history.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/CacheControlNoStore"
+          },
+          "X-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "X-Content-Type-Options": {
+            "$ref": "#/components/headers/ContentTypeOptions"
+          },
+          "Assign-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "Assign-API-Version": {
+            "$ref": "#/components/headers/AssignAPIVersion"
+          },
+          "Assign-Server-Version": {
+            "$ref": "#/components/headers/AssignServerVersion"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "The caller has exceeded an applicable abuse-control limit.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/CacheControlNoStore"
+          },
+          "Retry-After": {
+            "description": "Seconds until the client may retry.",
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "X-Content-Type-Options": {
+            "$ref": "#/components/headers/ContentTypeOptions"
+          },
+          "X-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "Assign-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "Assign-API-Version": {
+            "$ref": "#/components/headers/AssignAPIVersion"
+          },
+          "Assign-Server-Version": {
+            "$ref": "#/components/headers/AssignServerVersion"
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "The server could not complete the request.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/CacheControlNoStore"
+          },
+          "X-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "X-Content-Type-Options": {
+            "$ref": "#/components/headers/ContentTypeOptions"
+          },
+          "Assign-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "Assign-API-Version": {
+            "$ref": "#/components/headers/AssignAPIVersion"
+          },
+          "Assign-Server-Version": {
+            "$ref": "#/components/headers/AssignServerVersion"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "MaintenanceUnavailable": {
+        "description": "Scheduled maintenance temporarily prevents this operation. The standard\nProblem Details response has reason `maintenance_offline` when the service is\nunavailable. Mutating operations may instead return\n`maintenance_read_only` while reads remain available. Clients must\ntreat both reasons as retryable availability states, not authorization\nfailures, and honor `Retry-After` when present.\n",
+        "headers": {
+          "Retry-After": {
+            "description": "Delay in seconds before retrying, when an expected maintenance end is known.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "Cache-Control": {
+            "$ref": "#/components/headers/CacheControlNoStore"
+          },
+          "X-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "X-Content-Type-Options": {
+            "$ref": "#/components/headers/ContentTypeOptions"
+          },
+          "Assign-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "Assign-API-Version": {
+            "$ref": "#/components/headers/AssignAPIVersion"
+          },
+          "Assign-Server-Version": {
+            "$ref": "#/components/headers/AssignServerVersion"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The resource does not exist or is not visible to this principal.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/CacheControlNoStore"
+          },
+          "X-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "X-Content-Type-Options": {
+            "$ref": "#/components/headers/ContentTypeOptions"
+          },
+          "Assign-Request-ID": {
+            "$ref": "#/components/headers/AssignRequestID"
+          },
+          "Assign-API-Version": {
+            "$ref": "#/components/headers/AssignAPIVersion"
+          },
+          "Assign-Server-Version": {
+            "$ref": "#/components/headers/AssignServerVersion"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "developerAccessToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Assign CLI OAuth access token"
+      }
+    }
+  }
+}

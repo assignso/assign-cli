@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "candidate_sha256": "c0cea5ac068c5e7813b60c5c8928f551ca5bec174afb6d59e3cef1a1c9b6045e",
+  "system": "Darwin",
+  "machine": "arm64",
+  "passed": 18,
+  "failed": 0,
+  "scope": "native shell argv/streams/exits; no API or provider action; Windows execution requires Windows host",
+  "source_sha256": {
+    "src/main.ts": "53b876160f0157778208cf5fde19164cc987bba003f728e90083cd62832d1cd9",
+    "src/shell.ts": "649777c3196c8da785ea7eedab6ed45dead11b54b18526d9b275aef280db6292",
+    "src/shell-contract.json": "86be204a5f898c14cb15301d46b424f19824f1751221ba334a79c94cd9f2188b",
+    "fixtures/shell.test.ts": "cb50d862af8d06f69da2e30c12946e2152c0a97f2fc355863464bb312ed0d968",
+    "fixtures/shell-process.ts": "695ed8afb99643d5735a9fe8004fee2be10b0f8a915c3b7fea883ad477961e05",
+    "fixtures/shell-harness.py": "b57e30e16fef0e4710da412dc49608dc3b4e33100731abe36f870a8a02dcddc0",
+    "fixtures/command.test.ts": "9021dc0d6b4e67ccac28b3b893525e6528cb7072e6119f22158c5dc64f88e370",
+    "fixtures/config.test.ts": "98f62a4f6e7952193853a1e78d5c2d9c129a73ebc08c2ed3f51b44df7170202a",
+    "fixtures/native-packet.py": "19738cd3fd6c124e2de6a5372b87e35a8ea391b5f403d482beee8e65e0a8ea52",
+    "fixtures/native-packet.test.py": "4de16e2defcfbf7c9cda5a22022ca1dbb96feb746f43cfffc49c9274b0c31231",
+    "package.json": "9fc9dd5abbbe38b62f2fa8045bab73ca6844b979bd3c0a606107082929f000df",
+    "bun.lock": "1f21aff8a94520f3c70bc64d792c134fda13f050149014851cc613306e1f74e9"
+  },
+  "generator_sha256": "e25cec21cf6981236587b4bf296572ebbd9627b58e4fa0ac2624c6ed5a66e1b6",
+  "checks": [
+    {
+      "selector": "bun run typecheck",
+      "result": "passed"
+    },
+    {
+      "selector": "bun test fixtures/shell.test.ts fixtures/command.test.ts fixtures/config.test.ts",
+      "passed": 130,
+      "failed": 0,
+      "assertions": 182
+    },
+    {
+      "selector": "python3 fixtures/native-packet.test.py",
+      "passed": 3,
+      "failed": 0,
+      "scope": "mocked orchestration, not native qualification"
+    },
+    {
+      "selector": "bun run build",
+      "result": "passed",
+      "runtime": "Bun 1.4.3+c6da4a4d3"
+    },
+    {
+      "selector": "TestShellSnapshot",
+      "passed": 1,
+      "failed": 0,
+      "scope": "constructors and offline negative cases"
+    }
+  ],
+  "retry": "First compiled cold launch exceeded 10 seconds; bounded direct version/missing probes passed; harness timeout widened to 45 seconds, all 18 cases then passed. No latency qualification claimed."
+}

@@ -1,0 +1,43 @@
+{
+  "task": "1962",
+  "timestamp": "2026-11-13T10:13:57.095585+00:00",
+  "runtime": "Bun 1.4.3",
+  "checks": [
+    {
+      "selector": "bun test fixtures/output.test.ts fixtures/command.test.ts",
+      "cwd": "assign-cli/command",
+      "pass": 16,
+      "fail": 0,
+      "skip": 0,
+      "assertions": 59
+    },
+    {
+      "selector": "bun run typecheck",
+      "cwd": "assign-cli/command",
+      "exit": 0
+    },
+    {
+      "selector": "node ../scripts/generate-command-richtext.mjs --check",
+      "cwd": "assign-cli/command",
+      "exit": 0
+    },
+    {
+      "selector": "GOCACHE=<task temporary cache> go run ./command/fixtures/go-output",
+      "cwd": "assign-cli",
+      "exit": 0,
+      "cases": 10
+    }
+  ],
+  "sha256": {
+    "command/src/output.ts": "f2b8ee12ae61c3b6597e34b7f7aaf675b51b417d15d94b4dd44fdd2ef4802b07",
+    "command/src/richtext.ts": "04bbf79e9e84319f09dfc7117d25a5c9da87479221b3b260d77577db33cbcf4e",
+    "command/src/richtext-limits.ts": "81d49a843f17ac6a729866c3e812b2f569a93d196b445f882c78a68c54be7d69",
+    "command/src/richtext-source.json": "1e71e90285887ce5957212a26c84bc156188890812ea6608db4dc69c984ca1ab",
+    "command/fixtures/output.test.ts": "b97bb7313973d7c6ff406a5630a351d329b04d01bcb26cd1fbb2dc0682744c68",
+    "command/fixtures/richtext-go.json": "8a29e9fc8faeedf616a0f86487bf512f3717096080e4f5d7e180cbf6f3a95e63",
+    "command/fixtures/go-output/main.go": "bebb6462dfa32c888318ef065e7fb7bb044be9e73b429356094c054d79d48bcf",
+    "scripts/generate-command-richtext.mjs": "60211321a19efbc1de748c06996d8466e47337de8ce9db4b004c375b9440e449",
+    "command/package.json": "9fc9dd5abbbe38b62f2fa8045bab73ca6844b979bd3c0a606107082929f000df"
+  },
+  "limits": "Local output parity only; no provider/API/native/release qualification. Frozen CLI Core manifest retained; current Core extraction and Task-description limit changes do not affect Markdown rendering."
+}

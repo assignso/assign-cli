@@ -1,0 +1,135 @@
+[
+  {
+    "name": "task-revision",
+    "argv": [
+      "task",
+      "show",
+      "pro-123",
+      "--field",
+      "revision"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/v1/dev/workspace",
+        "status": 200,
+        "response": "{\"id\": \"11111111-1111-4111-8111-111111111111\", \"name\": \"Fixture\", \"slug\": \"fixture\"}"
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/workspaces/11111111-1111-4111-8111-111111111111/tasks?code=PRO-123&include_archived=true&limit=100&state=all",
+        "status": 200,
+        "response": "{\"data\": [{\"id\": \"22222222-2222-4222-8222-222222222222\", \"workspace_id\": \"11111111-1111-4111-8111-111111111111\", \"project_id\": \"33333333-3333-4333-8333-333333333333\", \"status_id\": \"44444444-4444-4444-8444-444444444444\", \"code\": \"PRO-123\", \"title\": \"Prepared\", \"revision\": \"9007199254740993\", \"web_url\": \"https://app.assign.so/app/fixture/tasks/PRO-123\", \"task_number\": \"123\", \"lifecycle\": \"active\"}], \"next_cursor\": null, \"included\": {\"statuses\": [{\"id\": \"44444444-4444-4444-8444-444444444444\", \"category\": \"todo\"}]}}"
+      }
+    ],
+    "exit": 0,
+    "stdout": "9007199254740993\n",
+    "stderr": ""
+  },
+  {
+    "name": "mutation-conflict",
+    "argv": [
+      "start",
+      "PRO-123",
+      "--task-id",
+      "22222222-2222-4222-8222-222222222222",
+      "--if-match",
+      "\"task-v1-fixture\"",
+      "--idempotency-key",
+      "fixture-replay-key-01"
+    ],
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/v1/tasks/22222222-2222-4222-8222-222222222222/start",
+        "headers": {
+          "If-Match": "\"task-v1-fixture\"",
+          "Idempotency-Key": "fixture-replay-key-01"
+        },
+        "status": 409,
+        "response": "{}"
+      }
+    ],
+    "exit": 5,
+    "stdout": "",
+    "stderr": "assign: retain the same credential; identical retry: assign --host 'https://cli-fixture.invalid' task start 'PRO-123' --task-id '22222222-2222-4222-8222-222222222222' --if-match '\"task-v1-fixture\"' --idempotency-key 'fixture-replay-key-01'\nassign: Task action conflict; reconcile current state before a new operation; identical retry with the same credential: assign --host 'https://cli-fixture.invalid' task start 'PRO-123' --task-id '22222222-2222-4222-8222-222222222222' --if-match '\"task-v1-fixture\"' --idempotency-key 'fixture-replay-key-01'\n"
+  },
+  {
+    "name": "malformed-response",
+    "argv": [
+      "task",
+      "show",
+      "pro-123",
+      "--field",
+      "revision"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/v1/dev/workspace",
+        "status": 200,
+        "response": "{\"id\": \"11111111-1111-4111-8111-111111111111\", \"name\": \"Fixture\", \"slug\": \"fixture\"}"
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/workspaces/11111111-1111-4111-8111-111111111111/tasks?code=PRO-123&include_archived=true&limit=100&state=all",
+        "status": 200,
+        "response": "{bad"
+      }
+    ],
+    "exit": 1,
+    "stdout": "",
+    "stderr": "assign: Task resource representation is incomplete or exceeds its limit\n"
+  },
+  {
+    "name": "broken-pipe",
+    "argv": [
+      "version"
+    ],
+    "requests": [],
+    "brokenPipe": true,
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "name": "unexpected-request",
+    "argv": [
+      "task",
+      "show",
+      "pro-123",
+      "--field",
+      "revision"
+    ],
+    "requests": [],
+    "exit": 70
+  },
+  {
+    "name": "unconsumed-response",
+    "argv": [
+      "version"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/v1/dev/workspace",
+        "status": 200,
+        "response": "{\"id\": \"11111111-1111-4111-8111-111111111111\", \"name\": \"Fixture\", \"slug\": \"fixture\"}"
+      }
+    ],
+    "exit": 70
+  },
+  {
+    "name": "fixture-child-stdin",
+    "engine": "bun",
+    "argv": [
+      "__fixture",
+      "echo"
+    ],
+    "stdin": "prepared stdin\n",
+    "requests": [],
+    "exit": 0,
+    "stdout": "prepared stdin\n",
+    "stderr": ""
+  }
+]
