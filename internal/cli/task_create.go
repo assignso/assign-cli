@@ -164,9 +164,11 @@ func resolveCreateProject(ctx context.Context, transport *operationTransport, wo
 			} `json:"data"`
 			NextCursor *string `json:"next_cursor"`
 		}
-		var fields map[string]json.RawMessage
-		if json.Unmarshal(data, &fields) != nil || fields["data"] == nil || fields["next_cursor"] == nil || string(fields["data"]) == "null" || json.Unmarshal(data, &response) != nil || len(response.Data) > 1 {
-			return "", newExitError(ExitOperation, "canonical Project page is incomplete or ambiguous")
+		if unmarshalResourcePage(data, &response) != nil {
+			return "", newExitError(ExitOperation, "Project discovery page is incomplete")
+		}
+		if len(response.Data) > 1 || (len(response.Data) == 1 && response.NextCursor != nil) {
+			return "", newExitError(ExitOperation, "exact Project response is ambiguous")
 		}
 		if len(response.Data) == 1 {
 			item := response.Data[0]

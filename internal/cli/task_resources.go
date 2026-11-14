@@ -113,7 +113,7 @@ func resolveResourceTask(ctx context.Context, transport *operationTransport, wor
 	cursor := ""
 	seen := map[string]bool{}
 	for count := 0; count < 1000; count++ {
-		query := url.Values{"limit": {"100"}, "state": {"all"}, "include_archived": {"true"}, "code": {code}}
+		query := url.Values{"limit": {"1"}, "state": {"all"}, "include_archived": {"true"}, "code": {code}}
 		if cursor != "" {
 			query.Set("cursor", cursor)
 		}
@@ -122,32 +122,33 @@ func resolveResourceTask(ctx context.Context, transport *operationTransport, wor
 			return canonicalReadTask{}, err
 		}
 		var page struct {
-			Data        []canonicalReadTask `json:"data"`
-			NextCursor  *string             `json:"next_cursor"`
-			Coverage    string              `json:"coverage"`
-			LimitReason string              `json:"limit_reason"`
-			Included    struct {
+			Data       []canonicalReadTask `json:"data"`
+			NextCursor *string             `json:"next_cursor"`
+			Coverage   string              `json:"coverage"`
+			Included   struct {
 				Statuses []struct {
 					ID       string `json:"id"`
 					Category string `json:"category"`
 				} `json:"statuses"`
 			} `json:"included"`
 		}
-		if json.Unmarshal(data, &page) != nil || page.Data == nil || len(page.Data) > 100 {
+		if unmarshalResourcePage(data, &page) != nil {
 			return canonicalReadTask{}, newExitError(ExitOperation, "Task discovery page is incomplete")
 		}
-		for _, item := range page.Data {
-			if !canonicalIdentifier(item.ID) || item.WorkspaceID != workspace || !canonicalIdentifier(item.ProjectID) || !canonicalPositiveDecimal(item.Revision) || item.Code == "" {
-				return canonicalReadTask{}, newExitError(ExitOperation, "Task discovery identity is incomplete")
+		if len(page.Data) > 1 || (len(page.Data) == 1 && page.NextCursor != nil) {
+			return canonicalReadTask{}, newExitError(ExitOperation, "exact Task response is ambiguous")
+		}
+		if len(page.Data) == 1 {
+			item := page.Data[0]
+			if !canonicalIdentifier(item.ID) || item.WorkspaceID != workspace || !canonicalIdentifier(item.ProjectID) || !canonicalPositiveDecimal(item.Revision) || item.Code != code {
+				return canonicalReadTask{}, newExitError(ExitOperation, "Task discovery identity is inconsistent")
 			}
-			if item.Code == code {
-				for _, status := range page.Included.Statuses {
-					if status.ID == item.StatusID {
-						item.Category = status.Category
-					}
+			for _, status := range page.Included.Statuses {
+				if status.ID == item.StatusID {
+					item.Category = status.Category
 				}
-				return item, nil
 			}
+			return item, nil
 		}
 		if page.NextCursor == nil {
 			if page.Coverage != "" && page.Coverage != "complete" {

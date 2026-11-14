@@ -131,7 +131,7 @@ func findProjectResource(ctx context.Context, transport *operationTransport, wor
 		if err != nil {
 			return navigationProject{}, err
 		}
-		if len(items) > 1 {
+		if len(items) > 1 || (len(items) == 1 && next != nil) {
 			return navigationProject{}, newExitError(ExitOperation, "exact Project response is ambiguous")
 		}
 		if len(items) == 1 {
@@ -259,8 +259,14 @@ func milestoneResource(ctx context.Context, transport *operationTransport, works
 		} `json:"data"`
 		Next *string `json:"next_cursor"`
 	}
-	if unmarshalResourcePage(data, &page) != nil || len(page.Data) != 1 || page.Next != nil {
-		return cliMilestone{}, newExitError(ExitContext, "exact Milestone is unavailable or incomplete")
+	if unmarshalResourcePage(data, &page) != nil {
+		return cliMilestone{}, newExitError(ExitOperation, "Milestone discovery page is incomplete")
+	}
+	if len(page.Data) > 1 || page.Next != nil {
+		return cliMilestone{}, newExitError(ExitOperation, "exact Milestone response is ambiguous or incomplete")
+	}
+	if len(page.Data) == 0 {
+		return cliMilestone{}, newExitError(ExitContext, "Milestone is unavailable in this Project")
 	}
 	item := page.Data[0].cliMilestone
 	item.Revision, err = strconv.ParseInt(page.Data[0].Revision, 10, 64)

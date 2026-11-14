@@ -491,10 +491,16 @@ func readResourceDocument(ctx context.Context, opts *options, client *http.Clien
 	if err != nil {
 		return cliDocument{}, err
 	}
-	if len(items) != 1 || next != nil || items[0].Path != path {
-		return cliDocument{}, newExitError(ExitContext, "exact Document is unavailable or incomplete")
+	if len(items) > 1 || next != nil {
+		return cliDocument{}, newExitError(ExitOperation, "exact Document response is ambiguous or incomplete")
+	}
+	if len(items) == 0 {
+		return cliDocument{}, newExitError(ExitContext, "Document is unavailable in this Workspace")
 	}
 	resource := items[0]
+	if resource.Path != path {
+		return cliDocument{}, newExitError(ExitOperation, "Document path does not match")
+	}
 	if err = navigationURL(resource.WebURL, workspace, "documents", resource.Path); err != nil {
 		return cliDocument{}, err
 	}

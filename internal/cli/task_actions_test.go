@@ -112,7 +112,7 @@ func TestCanonicalTaskActionRecoverySkipsDiscoveryAndAcceptsHistoricalReceipt(t 
 	var out, diagnostic bytes.Buffer
 	command := newRootCommandWithClient(strings.NewReader(""), &out, &diagnostic, server.Client())
 	command.SetArgs([]string{"--host", server.URL, "done", "PRO-123", "--task-id", taskActionFixtureTask, "--if-match", taskActionFixtureETag, "--idempotency-key", taskActionFixtureKey})
-	if err := command.ExecuteContext(context.Background()); err != nil || requests != 1 || out.String() != "MOVED-2  Ship now\n" {
+	if err := command.ExecuteContext(context.Background()); err != nil || requests != 1 || out.String() != "PRO-123  Ship now\n" {
 		t.Fatalf("requests=%d err=%v out=%q", requests, err, out.String())
 	}
 }
@@ -146,5 +146,44 @@ func TestCanonicalTaskActionUncertainOutcomeDoesNotRetry(t *testing.T) {
 	err := command.ExecuteContext(context.Background())
 	if requests != 1 || exitCode(err) != ExitOperation || !strings.Contains(fmt.Sprint(err), "outcome is uncertain") || !strings.Contains(diagnostic.String(), taskActionFixtureKey) || out.Len() != 0 {
 		t.Fatalf("requests=%d err=%v diagnostic=%q", requests, err, diagnostic.String())
+	}
+}
+
+func TestExactTaskLookupRejectsUnusableResponses(t *testing.T) {
+	match := taskActionFixture("PRO-123", "7")
+	for _, test := range []struct {
+		name   string
+		page   map[string]any
+		exit   int
+		detail string
+	}{
+		{"multiple-matches", map[string]any{"data": []any{match, match}, "next_cursor": nil}, ExitOperation, "ambiguous"},
+		{"match-with-continuation", map[string]any{"data": []any{match}, "next_cursor": "opaque"}, ExitOperation, "ambiguous"},
+		{"wrong-code", map[string]any{"data": []any{taskActionFixture("PRO-124", "7")}, "next_cursor": nil}, ExitOperation, "identity"},
+		{"missing-continuation-field", map[string]any{"data": []any{match}}, ExitOperation, "incomplete"},
+		{"partial-empty", map[string]any{"data": []any{}, "next_cursor": nil, "coverage": "partial"}, ExitOperation, "absence is unknown"},
+		{"authorized-empty", map[string]any{"data": []any{}, "next_cursor": nil}, ExitContext, "unavailable"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			transport := &operationTransport{host: "https://api.example.invalid", token: "prepared-task-token"}
+			calls := 0
+			transport.client.Transport = operationFixtureRoundTrip(func(r *http.Request) (*http.Response, error) {
+				calls++
+				if r.Method != http.MethodGet || r.URL.Path != "/api/v1/workspaces/"+taskActionFixtureWorkspace+"/tasks" ||
+					r.URL.Query().Get("code") != "PRO-123" || r.URL.Query().Get("limit") != "1" {
+					t.Errorf("unexpected exact lookup %s %s", r.Method, r.URL)
+				}
+				w := httptest.NewRecorder()
+				w.Header().Set("Content-Type", "application/json")
+				if err := json.NewEncoder(w).Encode(test.page); err != nil {
+					t.Fatal(err)
+				}
+				return w.Result(), nil
+			})
+			item, err := resolveResourceTask(context.Background(), transport, taskActionFixtureWorkspace, "PRO-123")
+			if exitCode(err) != test.exit || !strings.Contains(err.Error(), test.detail) || item.ID != "" || calls != 1 {
+				t.Fatalf("id=%q calls=%d err=%v", item.ID, calls, err)
+			}
+		})
 	}
 }

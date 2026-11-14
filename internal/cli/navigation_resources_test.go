@@ -31,10 +31,13 @@ func TestCanonicalNavigationResources(t *testing.T) {
 		case "/api/v1/dev/workspace":
 			fmt.Fprintf(w, `{"id":%q,"name":"Assign","slug":"demo","role":"owner"}`, workspace)
 		case "/api/v1/workspaces/" + workspace + "/projects":
+			if r.URL.Query().Get("code") != "PRO" {
+				t.Errorf("wrong exact Project selector")
+			}
 			fmt.Fprintf(w, `{"data":[{"id":%q,"workspace_id":%q,"key":"PRO","name":"Product","path":"product","revision":"9223372036854775807","url":"https://external.invalid","web_url":"https://app.assign.so/app/demo/projects/product"}],"next_cursor":null}`, project, workspace)
 		case "/api/v1/workspaces/" + workspace + "/documents":
-			if r.URL.Query().Get("project_id") != "" && r.URL.Query().Get("project_id") != project {
-				t.Errorf("wrong Project selector")
+			if r.URL.Query().Get("path") != "plan" {
+				t.Errorf("wrong exact Document selector")
 			}
 			fmt.Fprintf(w, `{"data":[{"id":%q,"workspace_id":%q,"path":"plan","title":"Plan","visibility":"project","revision":"9007199254740993","web_url":"https://app.assign.so/app/demo/documents/plan"}],"next_cursor":null}`, document, workspace)
 		case "/api/v1/documents/" + document + "/content":
@@ -124,7 +127,7 @@ func canonicalNavigationTestHandler(t *testing.T, slug, origin string) http.Hand
 			io.WriteString(w, "Ship on Friday.")
 		case "/api/v1/workspaces/" + workspace + "/tasks":
 			code, title, next := "PRO-1", "Ship navigation", any(nil)
-			if r.URL.Query().Get("limit") == "1" {
+			if r.URL.Query().Get("code") == "" && r.URL.Query().Get("limit") == "1" {
 				title = "first"
 				next = "opaque/+cursor?=&"
 				if r.URL.Query().Get("cursor") != "" {
