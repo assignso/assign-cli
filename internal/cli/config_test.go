@@ -178,12 +178,11 @@ func TestInitUsesStoredHostAndSavesOnlyAuthorizedProject(t *testing.T) {
 }
 
 func TestRelatedTaskLookupReusesBoundedContextAndOmissionWarnings(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/api/v1/cli/tasks/ASG-362/context" || request.URL.Query().Get("profile") != "compact" {
+	server := httptest.NewTLSServer(canonicalTaskContextFixture(t, "ASG-362", "apt_test", func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Query().Get("profile") != "compact" {
 			t.Errorf("unexpected request %s", request.URL)
 		}
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(response, `{"task_code":"ASG-362","profile":"compact","markdown":"# Task ASG-362\n\n## Relations\n\n- related ASG-234\n","truncated":true,"omissions":["relations: more available"]}`)
+		_, _ = io.WriteString(response, `{"format":"markdown","task_code":"ASG-362","profile":"compact","markdown":"# Task ASG-362\n\n## Relations\n\n- related ASG-234\n","truncated":true,"omissions":["relations: more available"]}`)
 	}))
 	defer server.Close()
 	t.Setenv("ASSIGN_TOKEN", "apt_test")

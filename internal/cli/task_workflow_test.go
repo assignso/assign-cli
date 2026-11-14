@@ -22,15 +22,48 @@ func executeTaskFixture(t *testing.T, server *httptest.Server, input string, arg
 	return output.String(), diagnostics.String(), err
 }
 
+func canonicalTaskContextFixture(t *testing.T, code, token string, packet http.HandlerFunc) http.HandlerFunc {
+	t.Helper()
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.Header.Get("Authorization") != "Bearer "+token {
+			t.Errorf("unexpected context flow request: %s %s", r.Method, r.URL)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/v1/dev/workspace":
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": taskActionFixtureWorkspace, "slug": "prepared"})
+		case "/api/v1/workspaces/" + taskActionFixtureWorkspace + "/tasks":
+			if r.URL.Query().Get("code") != code {
+				t.Errorf("unexpected context Task lookup: %s", r.URL)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{taskActionFixture(code, "1")}, "next_cursor": nil, "coverage": "complete"})
+		case "/api/v1/tasks/" + taskActionFixtureTask + "/context":
+			if r.URL.Query().Get("format") != "markdown" {
+				t.Errorf("unexpected context format: %s", r.URL)
+			}
+			packet(w, r)
+		default:
+			t.Errorf("unexpected context route: %s", r.URL)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}
+}
+
 func TestTaskContextProfilesAndSafeStreams(t *testing.T) {
 	t.Setenv("ASSIGN_TOKEN", "apt_fixture")
 	calls := 0
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(canonicalTaskContextFixture(t, "PRO-1", "apt_fixture", func(w http.ResponseWriter, r *http.Request) {
 		calls++
-		if r.URL.Path != "/api/v1/cli/tasks/PRO-1/context" || r.Header.Get("Authorization") != "Bearer apt_fixture" {
-			t.Errorf("unexpected request %s", r.URL)
+		want := "compact"
+		if calls == 2 {
+			want = "full"
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"task_code": "PRO-1", "profile": r.URL.Query().Get("profile"), "markdown": "# PRO-1\n\nUntrusted content\n\x1b[31mtext\n", "truncated": true, "omissions": []string{"unsupported"}})
+		if r.URL.Query().Get("profile") != want {
+			t.Errorf("unexpected context profile: %s", r.URL)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"format": "markdown", "task_code": "PRO-1", "profile": want, "markdown": "# PRO-1\n\nUntrusted content\n\x1b[31mtext\n", "truncated": true, "omissions": []string{"unsupported"}})
 	}))
 	defer server.Close()
 	for _, flag := range []string{"--compact", "--full"} {
@@ -52,10 +85,16 @@ func TestTaskContextRejectsWrongIdentityAndOversizedPacket(t *testing.T) {
 		{"task_code": "PRO-1", "profile": "full", "markdown": "wrong profile"},
 		{"task_code": "PRO-1", "profile": "compact", "markdown": strings.Repeat("a", 16*1024+1)},
 	} {
-		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _ = json.NewEncoder(w).Encode(packet) }))
+		calls := 0
+		server := httptest.NewTLSServer(canonicalTaskContextFixture(t, "PRO-1", "apt_fixture", func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			packet["format"] = "markdown"
+			packet["truncated"] = false
+			_ = json.NewEncoder(w).Encode(packet)
+		}))
 		out, _, err := executeTaskFixture(t, server, "", "task", "context", "PRO-1")
 		server.Close()
-		if err == nil || out != "" {
+		if calls != 1 || err == nil || !strings.Contains(err.Error(), "Task context response is incomplete or exceeds its profile limit") || out != "" {
 			t.Fatalf("out=%q err=%v", out, err)
 		}
 	}
