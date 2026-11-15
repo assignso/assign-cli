@@ -244,17 +244,16 @@ func TestFindAliasUsesSearch(t *testing.T) {
 }
 
 func TestTaskAliasUsesNamespacedAction(t *testing.T) {
-	server := httptest.NewTLSServer(taskActionFixtureHandler(t, "PRO-123", "7", func(response http.ResponseWriter, request *http.Request) {
+	client := taskActionFixtureClient(t, taskActionFixtureHandler(t, "PRO-123", "7", func(response http.ResponseWriter, request *http.Request) {
 		if request.URL.Path != "/api/v1/tasks/"+taskActionFixtureTask+"/complete" || request.Header.Get("If-Match") != taskActionFixtureETag {
 			t.Errorf("request = %s If-Match=%q", request.URL.Path, request.Header.Get("If-Match"))
 		}
-		taskActionFixtureResult(response, "PRO-123", false)
+		taskActionFixtureResult(response, false, false)
 	}))
-	defer server.Close()
 	t.Setenv("ASSIGN_TOKEN", "prepared-task-token")
 	var stdout, stderr bytes.Buffer
-	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
-	command.SetArgs([]string{"--host", server.URL, "t", "done", "PRO-123", "--revision", "7"})
+	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, client)
+	command.SetArgs([]string{"--host", taskActionFixtureHost, "t", "done", "PRO-123", "--revision", "7"})
 	if err := command.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("execute: %v", err)
 	}
@@ -415,22 +414,21 @@ func TestTaskDoneSurfacesLifecycleConflictsAndKeepsRevisionConflicts(t *testing.
 
 func TestTaskDoneSendsExplicitTargetStatus(t *testing.T) {
 	var query string
-	server := httptest.NewTLSServer(taskActionFixtureHandler(t, "PRO-9", "3", func(response http.ResponseWriter, request *http.Request) {
+	client := taskActionFixtureClient(t, taskActionFixtureHandler(t, "PRO-9", "3", func(response http.ResponseWriter, request *http.Request) {
 		query = request.URL.RawQuery
 		response.Header().Set("Content-Type", "application/json")
-		taskActionFixtureResult(response, "PRO-9", false)
+		taskActionFixtureResult(response, false, false)
 	}))
-	defer server.Close()
 	t.Setenv("ASSIGN_TOKEN", "prepared-task-token")
 	const target = "0196a000-0000-7000-8000-000000000001"
 	var stdout, stderr bytes.Buffer
-	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
-	command.SetArgs([]string{"--host", server.URL, "done", "pro-9", "--revision", "3", "--target-status-id", target})
+	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, client)
+	command.SetArgs([]string{"--host", taskActionFixtureHost, "done", "pro-9", "--revision", "3", "--target-status-id", target})
 	if err := command.ExecuteContext(context.Background()); err != nil || query != "target_status_id="+target {
 		t.Fatalf("err=%v query=%q", err, query)
 	}
-	command = newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
-	command.SetArgs([]string{"--host", server.URL, "done", "pro-9", "--revision", "3", "--target-status-id", "Done"})
+	command = newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, client)
+	command.SetArgs([]string{"--host", taskActionFixtureHost, "done", "pro-9", "--revision", "3", "--target-status-id", "Done"})
 	if err := command.ExecuteContext(context.Background()); exitCode(err) != ExitArguments {
 		t.Fatalf("invalid target err = %v", err)
 	}

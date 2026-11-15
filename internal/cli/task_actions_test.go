@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,6 +14,7 @@ import (
 )
 
 const (
+	taskActionFixtureHost      = "https://api.example.invalid"
 	taskActionFixtureTask      = "10000000-0000-4000-8000-000000000011"
 	taskActionFixtureWorkspace = "10000000-0000-4000-8000-000000000012"
 	taskActionFixtureProject   = "10000000-0000-4000-8000-000000000013"
@@ -24,8 +27,35 @@ func taskActionFixture(code, revision string) map[string]any {
 	return map[string]any{"id": taskActionFixtureTask, "workspace_id": taskActionFixtureWorkspace, "project_id": taskActionFixtureProject, "status_id": taskActionFixtureStatus, "code": code, "title": "Ship now", "revision": revision, "task_number": "123"}
 }
 
-// Shared canonical fixture: real CLI parsing/transport, prepared TLS server,
-// no provider or environment credential store. Its complete Task deliberately
+// Use the standard HTTP/1 transport over an in-memory connection. The action
+// still exercises request framing and transport policy without a listener.
+func taskActionFixtureClient(t *testing.T, handler http.Handler) *http.Client {
+	t.Helper()
+	return &http.Client{Transport: &http.Transport{
+		DialTLSContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+			client, server := net.Pipe()
+			go func() {
+				defer server.Close()
+				request, err := http.ReadRequest(bufio.NewReader(server))
+				if err != nil {
+					t.Errorf("read prepared action request: %v", err)
+					return
+				}
+				defer request.Body.Close()
+				recorder := httptest.NewRecorder()
+				handler.ServeHTTP(recorder, request)
+				response := recorder.Result()
+				defer response.Body.Close()
+				response.Close = true
+				_ = response.Write(server)
+			}()
+			return client, nil
+		},
+	}}
+}
+
+// Shared canonical fixture: real CLI parsing and transport policy,
+// // no provider or environment credential store. Its complete Task deliberately
 // exceeds the collection/Comment response limit.
 func taskActionFixtureHandler(t *testing.T, code, revision string, post http.HandlerFunc) http.HandlerFunc {
 	t.Helper()
@@ -52,6 +82,7 @@ func taskActionFixtureHandler(t *testing.T, code, revision string, post http.Han
 			}
 			w.Header().Set("ETag", taskActionFixtureETag)
 			item := taskActionFixture(code, revision)
+			delete(item, "code")
 			item["description"] = strings.Repeat("x", 300000)
 			_ = json.NewEncoder(w).Encode(item)
 		default:
@@ -61,8 +92,10 @@ func taskActionFixtureHandler(t *testing.T, code, revision string, post http.Han
 	}
 }
 
-func taskActionFixtureResult(w http.ResponseWriter, code string, replay bool) {
-	result := map[string]any{"task": taskActionFixture(code, "8"), "reassigned": false}
+func taskActionFixtureResult(w http.ResponseWriter, replay, reassigned bool) {
+	item := taskActionFixture("", "8")
+	delete(item, "code")
+	result := map[string]any{"task": item, "reassigned": reassigned}
 	if !replay {
 		w.Header().Set("ETag", `"a1.s1.projection.prepared-receipt"`)
 		result["item_validator"] = map[string]any{"etag": `"a1.s1.item.prepared-after"`, "encoding": "identity", "representation": "canonical-item"}
@@ -72,10 +105,10 @@ func taskActionFixtureResult(w http.ResponseWriter, code string, replay bool) {
 
 func TestCanonicalTaskActionsUseObservedCondition(t *testing.T) {
 	t.Setenv("ASSIGN_TOKEN", "prepared-task-token")
-	for _, action := range []string{"done", "reopen"} {
+	for _, action := range []string{"start", "done", "reopen"} {
 		t.Run(action, func(t *testing.T) {
 			posts := 0
-			server := httptest.NewTLSServer(taskActionFixtureHandler(t, "PRO-123", "7", func(w http.ResponseWriter, r *http.Request) {
+			client := taskActionFixtureClient(t, taskActionFixtureHandler(t, "PRO-123", "7", func(w http.ResponseWriter, r *http.Request) {
 				posts++
 				canonical := action
 				if canonical == "done" {
@@ -84,14 +117,16 @@ func TestCanonicalTaskActionsUseObservedCondition(t *testing.T) {
 				if r.URL.Path != "/api/v1/tasks/"+taskActionFixtureTask+"/"+canonical || r.Header.Get("If-Match") != taskActionFixtureETag || r.Header.Get("Idempotency-Key") != taskActionFixtureKey || r.ContentLength != 0 {
 					t.Errorf("incorrect action: %s headers=%v", r.URL, r.Header)
 				}
-				taskActionFixtureResult(w, "PRO-123", false)
+				taskActionFixtureResult(w, false, action == "start")
 			}))
-			defer server.Close()
 			var out, diagnostic bytes.Buffer
-			command := newRootCommandWithClient(strings.NewReader(""), &out, &diagnostic, server.Client())
-			command.SetArgs([]string{"--host", server.URL, "task", action, "pro-123", "--revision", "7", "--idempotency-key", taskActionFixtureKey})
+			command := newRootCommandWithClient(strings.NewReader(""), &out, &diagnostic, client)
+			command.SetArgs([]string{"--host", taskActionFixtureHost, "task", action, "pro-123", "--revision", "7", "--idempotency-key", taskActionFixtureKey})
 			if err := command.ExecuteContext(context.Background()); err != nil || posts != 1 || out.String() != "PRO-123  Ship now\n" || !strings.Contains(diagnostic.String(), "--if-match '"+taskActionFixtureETag+"'") {
 				t.Fatalf("posts=%d err=%v out=%q diagnostic=%q", posts, err, out.String(), diagnostic.String())
+			}
+			if warned := strings.Contains(diagnostic.String(), "Task was reassigned to you"); warned != (action == "start") {
+				t.Fatalf("unexpected reassignment diagnostic for %s: %q", action, diagnostic.String())
 			}
 		})
 	}
@@ -99,34 +134,36 @@ func TestCanonicalTaskActionsUseObservedCondition(t *testing.T) {
 
 func TestCanonicalTaskActionRecoverySkipsDiscoveryAndAcceptsHistoricalReceipt(t *testing.T) {
 	t.Setenv("ASSIGN_TOKEN", "prepared-task-token")
-	requests := 0
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests++
-		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/tasks/"+taskActionFixtureTask+"/complete" || r.Header.Get("If-Match") != taskActionFixtureETag || r.Header.Get("Idempotency-Key") != taskActionFixtureKey {
-			t.Errorf("recovery rediscovered/replaced original command: %s %s", r.Method, r.URL)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		taskActionFixtureResult(w, "MOVED-2", true)
-	}))
-	defer server.Close()
-	var out, diagnostic bytes.Buffer
-	command := newRootCommandWithClient(strings.NewReader(""), &out, &diagnostic, server.Client())
-	command.SetArgs([]string{"--host", server.URL, "done", "PRO-123", "--task-id", taskActionFixtureTask, "--if-match", taskActionFixtureETag, "--idempotency-key", taskActionFixtureKey})
-	if err := command.ExecuteContext(context.Background()); err != nil || requests != 1 || out.String() != "PRO-123  Ship now\n" {
-		t.Fatalf("requests=%d err=%v out=%q", requests, err, out.String())
+	for commandName, canonical := range map[string]string{"start": "start", "done": "complete"} {
+		t.Run(commandName, func(t *testing.T) {
+			requests := 0
+			client := taskActionFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				if r.Method != http.MethodPost || r.URL.Path != "/api/v1/tasks/"+taskActionFixtureTask+"/"+canonical || r.Header.Get("If-Match") != taskActionFixtureETag || r.Header.Get("Idempotency-Key") != taskActionFixtureKey || r.Header.Get("Authorization") != "Bearer prepared-task-token" {
+					t.Errorf("recovery rediscovered/replaced original command: %s %s", r.Method, r.URL)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				taskActionFixtureResult(w, true, false)
+			}))
+			var out, diagnostic bytes.Buffer
+			command := newRootCommandWithClient(strings.NewReader(""), &out, &diagnostic, client)
+			command.SetArgs([]string{"--host", taskActionFixtureHost, commandName, "PRO-123", "--task-id", taskActionFixtureTask, "--if-match", taskActionFixtureETag, "--idempotency-key", taskActionFixtureKey})
+			if err := command.ExecuteContext(context.Background()); err != nil || requests != 1 || out.String() != "PRO-123  Ship now\n" {
+				t.Fatalf("requests=%d err=%v out=%q", requests, err, out.String())
+			}
+		})
 	}
 }
 
 func TestCanonicalTaskActionStaleObservationNeverWrites(t *testing.T) {
 	t.Setenv("ASSIGN_TOKEN", "prepared-task-token")
-	server := httptest.NewTLSServer(taskActionFixtureHandler(t, "PRO-123", "8", func(w http.ResponseWriter, r *http.Request) {
+	client := taskActionFixtureClient(t, taskActionFixtureHandler(t, "PRO-123", "8", func(w http.ResponseWriter, r *http.Request) {
 		t.Error("stale revision sent a write")
 		w.WriteHeader(500)
 	}))
-	defer server.Close()
 	var out, diagnostic bytes.Buffer
-	command := newRootCommandWithClient(strings.NewReader(""), &out, &diagnostic, server.Client())
-	command.SetArgs([]string{"--host", server.URL, "done", "PRO-123", "--revision", "7"})
+	command := newRootCommandWithClient(strings.NewReader(""), &out, &diagnostic, client)
+	command.SetArgs([]string{"--host", taskActionFixtureHost, "done", "PRO-123", "--revision", "7"})
 	if err := command.ExecuteContext(context.Background()); exitCode(err) != ExitConflict || out.Len() != 0 || diagnostic.Len() != 0 {
 		t.Fatalf("err=%v out=%q diagnostic=%q", err, out.String(), diagnostic.String())
 	}
@@ -135,14 +172,13 @@ func TestCanonicalTaskActionStaleObservationNeverWrites(t *testing.T) {
 func TestCanonicalTaskActionUncertainOutcomeDoesNotRetry(t *testing.T) {
 	t.Setenv("ASSIGN_TOKEN", "prepared-task-token")
 	requests := 0
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := taskActionFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
 		w.WriteHeader(503)
 	}))
-	defer server.Close()
 	var out, diagnostic bytes.Buffer
-	command := newRootCommandWithClient(strings.NewReader(""), &out, &diagnostic, server.Client())
-	command.SetArgs([]string{"--host", server.URL, "reopen", "PRO-123", "--task-id", taskActionFixtureTask, "--if-match", taskActionFixtureETag, "--idempotency-key", taskActionFixtureKey})
+	command := newRootCommandWithClient(strings.NewReader(""), &out, &diagnostic, client)
+	command.SetArgs([]string{"--host", taskActionFixtureHost, "reopen", "PRO-123", "--task-id", taskActionFixtureTask, "--if-match", taskActionFixtureETag, "--idempotency-key", taskActionFixtureKey})
 	err := command.ExecuteContext(context.Background())
 	if requests != 1 || exitCode(err) != ExitOperation || !strings.Contains(fmt.Sprint(err), "outcome is uncertain") || !strings.Contains(diagnostic.String(), taskActionFixtureKey) || out.Len() != 0 {
 		t.Fatalf("requests=%d err=%v diagnostic=%q", requests, err, diagnostic.String())
