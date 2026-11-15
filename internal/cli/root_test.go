@@ -202,44 +202,48 @@ func TestBareCommandListsMyWorkWithBearerToken(t *testing.T) {
 }
 
 func TestSearchUsesBearerAndRendersCode(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/api/v1/cli/search" || request.URL.Query().Get("q") != "ship now" || request.Header.Get("Authorization") != "Bearer apt_test" {
-			t.Fatalf("request = %s %q %q", request.URL.String(), request.URL.Query().Get("q"), request.Header.Get("Authorization"))
-		}
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"items":[{"resource_type":"task","code":"PRO-123","title":"Ship now","url":"https://app.assign.so/app/acme"}],"next_cursor":null,"has_more":false}`))
-	}))
-	defer server.Close()
-	t.Setenv("ASSIGN_TOKEN", "apt_test")
-	var stdout, stderr bytes.Buffer
-	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
-	command.SetArgs([]string{"--host", server.URL, "search", "ship now"})
-	if err := command.ExecuteContext(context.Background()); err != nil {
-		t.Fatalf("execute: %v", err)
-	}
-	if stdout.String() != "PRO-123  Ship now\n" || stderr.String() != "" {
-		t.Fatalf("output = (%q, %q)", stdout.String(), stderr.String())
-	}
+	testCanonicalSearchCommand(t, "search")
 }
 
 func TestFindAliasUsesSearch(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/api/v1/cli/search" || request.URL.Query().Get("q") != "ship now" {
-			t.Fatalf("request = %s", request.URL.String())
+	testCanonicalSearchCommand(t, "find")
+}
+
+func testCanonicalSearchCommand(t *testing.T, name string) {
+	t.Helper()
+	requests := make(chan string, 4)
+	client := taskActionFixtureClient(t, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests <- request.URL.Path
+		if request.Method != http.MethodGet || request.Header.Get("Authorization") != "Bearer apt_test" || request.Header.Get("Accept-Encoding") != "identity" {
+			t.Errorf("unexpected transport for %s %s", request.Method, request.URL)
 		}
 		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"items":[{"resource_type":"task","code":"PRO-123","title":"Ship now"}],"next_cursor":null,"has_more":false}`))
+		switch request.URL.Path {
+		case "/api/v1/dev/workspace":
+			_, _ = response.Write([]byte(`{"id":"` + taskActionFixtureWorkspace + `","slug":"prepared"}`))
+		case "/api/v1/workspaces/" + taskActionFixtureWorkspace + "/search":
+			if request.URL.Query().Encode() != "limit=50&q=ship+now" {
+				t.Errorf("Search query = %q", request.URL.RawQuery)
+			}
+			_, _ = response.Write([]byte(`{"data":[{"resource_type":"task","resource_id":"` + taskActionFixtureTask + `","identifier":"PRO-123","title":"Ship now"},{"resource_type":"person","resource_id":"` + taskActionFixtureProject + `","title":"Ship Person"}],"next_cursor":null,"has_more":false}`))
+		default:
+			t.Errorf("unexpected path %q", request.URL.Path)
+			response.WriteHeader(http.StatusNotFound)
+		}
 	}))
-	defer server.Close()
 	t.Setenv("ASSIGN_TOKEN", "apt_test")
 	var stdout, stderr bytes.Buffer
-	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, server.Client())
-	command.SetArgs([]string{"--host", server.URL, "find", "ship now"})
+	command := newRootCommandWithClient(strings.NewReader(""), &stdout, &stderr, client)
+	command.SetArgs([]string{"--host", taskActionFixtureHost, name, "ship now"})
 	if err := command.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("execute: %v", err)
 	}
-	if stdout.String() != "PRO-123  Ship now\n" || stderr.String() != "" {
+	want := "PRO-123  Ship now\n" + taskActionFixtureProject + "  Ship Person\n"
+	if stdout.String() != want || stderr.String() != "" {
 		t.Fatalf("output = (%q, %q)", stdout.String(), stderr.String())
+	}
+	if len(requests) != 2 || <-requests != "/api/v1/dev/workspace" || <-requests != "/api/v1/workspaces/"+taskActionFixtureWorkspace+"/search" {
+		t.Fatal("Search must resolve the credential Workspace once before querying it")
 	}
 }
 
