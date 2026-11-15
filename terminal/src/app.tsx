@@ -113,6 +113,10 @@ export function App({ environment }: { environment: DiscussEnvironment }) {
   const onNew = useCallback(async (message: AppendMessage) => {
     const input = messageText(message);
     if (!input || running || access !== "full") return;
+    if (api.decisionPending) {
+      setError("Check the pending decision before sending again.");
+      return;
+    }
     setSubmitting(true); setError("");
     try {
       const waiting = openInteraction(messages);
@@ -128,6 +132,18 @@ export function App({ environment }: { environment: DiscussEnvironment }) {
       setSubmitting(false);
     }
   }, [access, api, messages, refresh, running]);
+
+  useInput((input, key) => {
+    if (!key.ctrl || input !== "r" || submitting || !api.decisionPending) return;
+    setSubmitting(true);
+    setError("");
+    void api.checkDecision()
+      .then(() => refresh())
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : "Could not check the decision.");
+      })
+      .finally(() => setSubmitting(false));
+  });
 
   const onCancel = useCallback(async () => {
     if (!activeMessage) return;
@@ -153,6 +169,7 @@ export function App({ environment }: { environment: DiscussEnvironment }) {
     <Box flexDirection="column" paddingX={1}>
       <Text bold color="cyan">Assign Discuss · {environment.workspaceName}</Text>
       <Text dimColor>Hosted Workspace conversation · canonical history stays in Assign</Text>
+      {api.decisionPending && !submitting ? <Text color="yellow">Ctrl+R · Check decision status</Text> : null}
       <Box flexDirection="column" marginTop={1}><Thread byId={byId} provisional={provisional} error={error} writable={access === "full"} workspaceSlug={environment.workspaceSlug} {...(environment.webOrigin ? { webOrigin: environment.webOrigin } : {})} /></Box>
     </Box>
   </AssistantRuntimeProvider>;
