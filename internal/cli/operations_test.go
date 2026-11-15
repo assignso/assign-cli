@@ -5,6 +5,7 @@ package cli
 // after the full-product implementation checkpoint.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -183,6 +184,19 @@ func TestExternalOperationWaitOwnsSpacingJitterAndTerminalStop(t *testing.T) {
 	}
 }
 
+func TestExternalOperationWaitStopsForSourceReconciliation(t *testing.T) {
+	transport, calls, sleeps := preparedOperationTransport(t, func(int) (int, string, http.Header) {
+		return http.StatusOK, operationFixture("running"), http.Header{
+			"Assign-Recovery-Required": {"reconcile"},
+			"Retry-After":              {"2"},
+		}
+	}, time.Minute)
+	_, err := transport.wait(context.Background(), operationFixtureID)
+	if err == nil || exitCode(err) != ExitConflict || !strings.Contains(err.Error(), operationFixtureID) || len(*calls) != 1 || len(*sleeps) != 0 {
+		t.Fatalf("err=%v calls=%d sleeps=%v", err, len(*calls), *sleeps)
+	}
+}
+
 func TestExternalOperationWaitBoundsAttemptsDeadlineAndDenial(t *testing.T) {
 	for _, mode := range []string{"attempts", "deadline", "date-floor", "ambiguous-retry", "malformed-retry", "denied", "expired", "cancelled-context", "terminal-cancelled"} {
 		t.Run(mode, func(t *testing.T) {
@@ -280,15 +294,18 @@ func TestExternalOperationWaitStopsAnInflightReadOnCallerCancellation(t *testing
 // Source-authored only: these independent canonical response fixtures remain
 // phase-deferred with the existing transport harness. No provider is involved.
 func TestOperationRecoverySupportsEveryIntegratedSourceWithoutFetchingResults(t *testing.T) {
-	t.Setenv("ASSIGN_TOKEN", "prepared-terminal-token")
-	for _, source := range []struct{ name, reader, path string }{
-		{"agent", "listWorkspaceAgentRunOutputs", "/api/v1/workspaces/" + operationFixtureWorkspace + "/agents/" + operationFixtureAgent + "/runs/" + operationFixtureID + "/outputs"},
-		{"lifecycle", "getLifecycleMigration", "/api/v1/workspaces/" + operationFixtureWorkspace + "/lifecycle-migrations/" + operationFixtureID},
-		{"knowledge", "getWorkspaceKnowledgeAnswer", "/api/v1/workspaces/" + operationFixtureWorkspace + "/knowledge/answers/" + operationFixtureID},
+	if _, exists := operationResultReaders["getWorkspaceProjection"]; exists {
+		t.Fatal("the CLI catalog includes a first-party-only capture reader")
+	}
+	for _, source := range []struct{ name, reader, path, media string }{
+		{"agent", "listWorkspaceAgentRunOutputs", "/api/v1/workspaces/" + operationFixtureWorkspace + "/agents/" + operationFixtureAgent + "/runs/" + operationFixtureID + "/outputs", "application/json"},
+		{"lifecycle", "getLifecycleMigration", "/api/v1/workspaces/" + operationFixtureWorkspace + "/lifecycle-migrations/" + operationFixtureID, "application/json"},
+		{"knowledge", "getWorkspaceKnowledgeAnswer", "/api/v1/workspaces/" + operationFixtureWorkspace + "/knowledge/answers/" + operationFixtureID, "application/json"},
 		// A repository command is not its result sync run. This distinct source UUID
 		// prevents imposing the Agent run identity relation on every source family.
-		{"repository", "getKnowledgeRepositorySyncRun", "/api/v1/workspaces/" + operationFixtureWorkspace + "/knowledge-repository/runs/" + operationFixtureAgent},
-		{"work-change-set", "getChangeSetOperationResult", "/api/v1/workspaces/" + operationFixtureWorkspace + "/change-set-operations/" + operationFixtureID + "/result"},
+		{"repository", "getKnowledgeRepositorySyncRun", "/api/v1/workspaces/" + operationFixtureWorkspace + "/knowledge-repository/runs/" + operationFixtureAgent, "application/json"},
+		{"work-change-set", "getChangeSetOperationResult", "/api/v1/workspaces/" + operationFixtureWorkspace + "/change-set-operations/" + operationFixtureID + "/result", "application/json"},
+		{"timesheet-export", "getTimesheetExport", "/api/v1/timesheet-exports/" + operationFixtureID + "/content", "text/csv"},
 	} {
 		for _, action := range []string{"show", "cancel", "wait"} {
 			t.Run(source.name+"/"+action, func(t *testing.T) {
@@ -296,37 +313,45 @@ func TestOperationRecoverySupportsEveryIntegratedSourceWithoutFetchingResults(t 
 				if err := json.Unmarshal([]byte(operationFixture("succeeded")), &value); err != nil {
 					t.Fatal(err)
 				}
-				value["result"] = map[string]any{"kind": "authorized-resource", "operation_id": source.reader, "href": source.path, "media_type": "application/json"}
+				value["result"] = map[string]any{"kind": "authorized-resource", "operation_id": source.reader, "href": source.path, "media_type": source.media}
 				body, err := json.Marshal(value)
 				if err != nil {
 					t.Fatal(err)
 				}
 				calls := 0
-				server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					calls++
-					method := http.MethodGet
-					path := "/api/v1/operations/" + operationFixtureID
-					if action == "cancel" {
-						method = http.MethodPost
-						path += "/cancel"
-					}
-					if r.Method != method || r.URL.Path != path || r.URL.RawQuery != "" {
-						t.Errorf("unexpected dispatch: %s %s", r.Method, r.URL)
-					}
-					if action == "cancel" && r.Header.Get("Idempotency-Key") != "prepared-operation-cancel-01" {
-						t.Error("original cancellation key was lost")
-					}
-					w.Header().Set("Content-Type", "application/json")
-					_, _ = w.Write(body)
-				}))
-				defer server.Close()
-				args := []string{"operation", action, operationFixtureID}
+				method, path, key := http.MethodGet, "/api/v1/operations/"+operationFixtureID, ""
 				if action == "cancel" {
-					args = append(args, "--idempotency-key", "prepared-operation-cancel-01")
+					method, path, key = http.MethodPost, path+"/cancel", "prepared-operation-cancel-01"
 				}
-				out, _, err := executeTaskFixture(t, server, "", args...)
-				if err != nil || calls != 1 || !strings.Contains(out, source.reader) || !strings.Contains(out, source.path) {
-					t.Fatalf("out=%q err=%v calls=%d", out, err, calls)
+				transport := &operationTransport{host: "https://prepared.invalid", token: "prepared", now: time.Now}
+				transport.client.Transport = operationFixtureRoundTrip(func(r *http.Request) (*http.Response, error) {
+					calls++
+					if r.Method != method || r.URL.Path != path || r.URL.RawQuery != "" || r.Header.Get("Idempotency-Key") != key {
+						t.Fatalf("unexpected dispatch: %s %s", r.Method, r.URL)
+					}
+					if action == "cancel" && source.name == "timesheet-export" {
+						return &http.Response{StatusCode: http.StatusConflict, Body: http.NoBody}, nil
+					}
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     http.Header{"Content-Type": {"application/json"}},
+						Body:       io.NopCloser(bytes.NewReader(body)),
+					}, nil
+				})
+				var got cliOperation
+				if action == "wait" {
+					got, err = transport.wait(context.Background(), operationFixtureID)
+				} else {
+					got, _, err = transport.request(context.Background(), method, path, "", key, operationFixtureID, action)
+				}
+				if action == "cancel" && source.name == "timesheet-export" {
+					if err == nil || exitCode(err) != ExitConflict || calls != 1 {
+						t.Fatalf("terminal export cancel: err=%v calls=%d", err, calls)
+					}
+					return
+				}
+				if err != nil || calls != 1 || got.Result == nil || got.Result.OperationID != source.reader || got.Result.Href != source.path {
+					t.Fatalf("result=%+v err=%v calls=%d", got.Result, err, calls)
 				}
 			})
 		}

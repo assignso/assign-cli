@@ -310,6 +310,8 @@ func (transport *operationTransport) request(ctx context.Context, method, path, 
 		}
 	} else if response.StatusCode != http.StatusOK {
 		return cliOperation{}, floor, unknown(nil)
+	} else if result.Outcome == "active" && response.Header.Get("Assign-Recovery-Required") == "reconcile" {
+		return cliOperation{}, floor, newExitError(ExitConflict, "source reconciliation is required for Operation %s; retain the original key and inspect the source outcome", result.ID)
 	}
 	return result, floor, nil
 }
