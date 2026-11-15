@@ -18,7 +18,7 @@ import (
 // Reads share bounded recovery; no request follows redirects or changes credentials.
 func taskResourceExchange(ctx context.Context, transport *operationTransport, method, path, body, key string, status int) ([]byte, http.Header, error) {
 	uncertain := func() error {
-		return newExitError(ExitOperation, "Comment outcome is uncertain; retain the original host, credential, Workspace, Task ID, key and identical input; do not issue a replacement command")
+		return newExitError(ExitOperation, "Comment outcome is uncertain; retain the original host, credential, Workspace, Task ID, --idempotency-key %s and identical input; do not issue a replacement command", key)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, transport.host+path, strings.NewReader(body))
 	if err != nil {
@@ -95,13 +95,50 @@ func resourceWorkspace(ctx context.Context, transport *operationTransport, expli
 		}
 		return cliWorkspace{ID: explicit}, nil
 	}
-	data, _, err := taskResourceExchange(ctx, transport, http.MethodGet, "/api/v1/dev/workspace", "", "", http.StatusOK)
-	if err != nil {
-		return cliWorkspace{}, err
+	if transport.explicitBearer {
+		authority, err := transport.readCredentialContext(ctx)
+		if err != nil {
+			return cliWorkspace{}, err
+		}
+		return cliWorkspace{ID: authority.WorkspaceID}, nil
+	}
+	return transport.readWorkspace(ctx, "")
+}
+
+func workspaceDetails(ctx context.Context, transport *operationTransport, workspace cliWorkspace) (cliWorkspace, error) {
+	if workspace.Slug != "" {
+		return workspace, nil
+	}
+	return transport.readWorkspace(ctx, workspace.ID)
+}
+
+type workspaceCredentialContext struct {
+	AuthorityContext string `json:"authority_context"`
+	WorkspaceID      string `json:"workspace_id"`
+}
+
+func (transport *operationTransport) readCredentialContext(ctx context.Context) (workspaceCredentialContext, error) {
+	var authority workspaceCredentialContext
+	if err := transport.exchangeJSON(ctx, http.MethodGet, "/api/v1/auth-context", "credential context", nil, &authority); err != nil {
+		return workspaceCredentialContext{}, err
+	}
+	if authority.AuthorityContext != "workspace" || !canonicalIdentifier(authority.WorkspaceID) {
+		return workspaceCredentialContext{}, newExitError(ExitAuthentication, "ASSIGN_TOKEN must be bound to a Workspace")
+	}
+	return authority, nil
+}
+
+func (transport *operationTransport) readWorkspace(ctx context.Context, boundID string) (cliWorkspace, error) {
+	path := "/api/v1/dev/workspace"
+	if boundID != "" {
+		path = "/api/v1/workspaces/" + boundID
 	}
 	var workspace cliWorkspace
-	if json.Unmarshal(data, &workspace) != nil || !canonicalIdentifier(workspace.ID) || workspace.Slug == "" {
-		return cliWorkspace{}, newExitError(ExitOperation, "credential Workspace identity is incomplete")
+	if err := transport.exchangeJSON(ctx, http.MethodGet, path, "Workspace", nil, &workspace); err != nil {
+		return cliWorkspace{}, err
+	}
+	if !canonicalIdentifier(workspace.ID) || workspace.Slug == "" || workspace.Name == "" || (boundID != "" && workspace.ID != boundID) {
+		return cliWorkspace{}, newExitError(ExitOperation, "credential Workspace identity is incomplete or inconsistent")
 	}
 	return workspace, nil
 }
@@ -186,7 +223,7 @@ func readResourceTask(ctx context.Context, opts *options, client *http.Client, c
 // Task show shares the same credential-pinned exact-code discovery used by
 // context/comments. Navigation is authoritative response metadata, never inferred
 // from the API host or supplied through a second client origin setting.
-func readResourceTaskShow(ctx context.Context, opts *options, client *http.Client, code string) (cliTask, error) {
+func readResourceTaskShow(ctx context.Context, opts *options, client *http.Client, code string, includeURL bool) (cliTask, error) {
 	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
 	defer cancel()
 	transport, workspace, resource, err := readResourceTask(ctx, opts, client, code, "")
@@ -194,10 +231,16 @@ func readResourceTaskShow(ctx context.Context, opts *options, client *http.Clien
 		return cliTask{}, err
 	}
 	defer transport.client.CloseIdleConnections()
-	return canonicalTaskNavigation(resource, workspace)
+	if includeURL {
+		workspace, err = workspaceDetails(ctx, transport, workspace)
+		if err != nil {
+			return cliTask{}, err
+		}
+	}
+	return canonicalTaskNavigation(resource, workspace, includeURL)
 }
 
-func canonicalTaskNavigation(resource canonicalReadTask, workspace cliWorkspace) (cliTask, error) {
+func canonicalTaskNavigation(resource canonicalReadTask, workspace cliWorkspace, includeURL bool) (cliTask, error) {
 	projectCode, _, found := strings.Cut(resource.Code, "-")
 	revision, err := strconv.ParseInt(resource.Revision, 10, 64)
 	if !found || projectCode == "" || resource.Title == "" || err != nil || revision < 1 {
@@ -208,16 +251,14 @@ func canonicalTaskNavigation(resource canonicalReadTask, workspace cliWorkspace)
 	default:
 		return cliTask{}, newExitError(ExitOperation, "Task Status category is incomplete")
 	}
-	navigation, err := url.Parse(resource.WebURL)
-	if err != nil || resource.WebURL == "" || navigation.Hostname() == "" || navigation.User != nil || navigation.RawQuery != "" || navigation.ForceQuery || navigation.Fragment != "" || navigation.Opaque != "" || safeInline(resource.WebURL) != resource.WebURL {
-		return cliTask{}, newExitError(ExitOperation, "Task web_url representation/configuration is invalid")
+	item := cliTask{Code: resource.Code, ProjectCode: projectCode, Title: resource.Title, StatusCategory: resource.Category, Revision: revision}
+	if includeURL {
+		if err := navigationURL(resource.WebURL, workspace, "tasks", resource.Code); err != nil {
+			return cliTask{}, newExitError(ExitOperation, "Task web_url representation/configuration is invalid")
+		}
+		item.URL = resource.WebURL
 	}
-	local := navigation.Hostname() == "localhost" || navigation.Hostname() == "127.0.0.1" || navigation.Hostname() == "::1"
-	expected := "/app/" + url.PathEscape(workspace.Slug) + "/tasks/" + url.PathEscape(resource.Code)
-	if (navigation.Scheme != "https" && !(navigation.Scheme == "http" && local)) || workspace.Slug == "" || navigation.EscapedPath() != expected {
-		return cliTask{}, newExitError(ExitOperation, "Task web_url representation/configuration is invalid")
-	}
-	return cliTask{Code: resource.Code, ProjectCode: projectCode, Title: resource.Title, StatusCategory: resource.Category, Revision: revision, URL: resource.WebURL}, nil
+	return item, nil
 }
 
 type canonicalCLIComment struct {

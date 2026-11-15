@@ -137,8 +137,15 @@
     {
       "path": "assign",
       "aliases": null,
-      "help": "Work with Assign from the terminal\n\nUsage:\n  assign [flags]\n  assign [command]\n\nAvailable Commands:\n  activity    Read authorized Activity groups\n  agent       Submit an existing Assign-hosted Agent\n  aliases     List command aliases\n  completion  Generate shell completion\n  config      Inspect and change local CLI settings\n  discuss     Open Discuss in the terminal\n  doctor      Run redacted local diagnostics\n  document    Read Documents\n  done        Complete a Task\n  help        Help about any command\n  init        Validate and select a Project for the authenticated Workspace\n  login       Sign in through the system browser\n  logout      Revoke and remove the interactive CLI credential\n  mcp         Set up and diagnose Assign MCP clients\n  milestone   Read Milestones by Project code\n  operation   Recover compact status for an existing hosted Operation\n  project     Inspect Projects and their Tasks\n  reopen      Reopen a Task\n  search      Search content in the token Workspace\n  start       Start and assign a Task\n  task        Work with Tasks\n  update      Check for Assign CLI updates\n  version     Print version and build information\n  workspace   Inspect and switch Workspaces\n\nFlags:\n  -h, --help          help for assign\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n  -v, --version       version for assign\n\nUse \"assign [command] --help\" for more information about a command.\n",
+      "help": "Work with Assign from the terminal\n\nUsage:\n  assign [flags]\n  assign [command]\n\nAvailable Commands:\n  activity    Read authorized Activity groups\n  agent       Submit an existing Assign-hosted Agent\n  aliases     List command aliases\n  completion  Generate shell completion\n  config      Inspect and change local CLI settings\n  discuss     Open Discuss in the terminal\n  doctor      Run redacted local diagnostics\n  document    Read Documents\n  done        Complete a Task\n  help        Help about any command\n  init        Validate and select a Project for the authenticated Workspace\n  login       Sign in through the system browser\n  logout      Revoke and remove the interactive CLI credential\n  mcp         Set up and diagnose Assign MCP clients\n  milestone   Read Milestones by Project code\n  operation   Inspect and recover an existing Operation\n  project     Inspect Projects and their Tasks\n  reopen      Reopen a Task\n  search      Search content in the token Workspace\n  start       Start and assign a Task\n  task        Work with Tasks\n  update      Check for Assign CLI updates\n  version     Print version and build information\n  workspace   Inspect and switch Workspaces\n\nFlags:\n      --cursor string   Opaque continuation cursor from My Work\n  -h, --help            help for assign\n      --host string     Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n  -v, --version         version for assign\n\nUse \"assign [command] --help\" for more information about a command.\n",
       "flags": [
+        {
+          "name": "cursor",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
         {
           "name": "help",
           "short": "h",
@@ -1027,8 +1034,15 @@
       "aliases": [
         "ls"
       ],
-      "help": "List Documents in the current Workspace\n\nUsage:\n  assign document list [flags]\n\nAliases:\n  list, ls\n\nFlags:\n  -h, --help             help for list\n  -p, --project string   Limit Documents to a Project code\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "help": "List Documents in the current Workspace\n\nUsage:\n  assign document list [flags]\n\nAliases:\n  list, ls\n\nFlags:\n      --cursor string    Opaque continuation cursor from the same Document list\n  -h, --help             help for list\n  -p, --project string   Limit Documents to a Project code\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
       "flags": [
+        {
+          "name": "cursor",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
         {
           "name": "help",
           "short": "h",
@@ -2083,8 +2097,15 @@
         "docs",
         "doc"
       ],
-      "help": "List a Project's Documents\n\nUsage:\n  assign project documents [project-code] [flags]\n\nAliases:\n  documents, docs, doc\n\nFlags:\n  -h, --help   help for documents\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "help": "List a Project's Documents\n\nUsage:\n  assign project documents [project-code] [flags]\n\nAliases:\n  documents, docs, doc\n\nFlags:\n      --cursor string   Opaque continuation cursor from the same Project\n  -h, --help            help for documents\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
       "flags": [
+        {
+          "name": "cursor",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
         {
           "name": "help",
           "short": "h",
@@ -2129,8 +2150,15 @@
       "aliases": [
         "ls"
       ],
-      "help": "List Projects in the current Workspace\n\nUsage:\n  assign project list [flags]\n\nAliases:\n  list, ls\n\nFlags:\n  -h, --help   help for list\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "help": "List Projects in the current Workspace\n\nUsage:\n  assign project list [flags]\n\nAliases:\n  list, ls\n\nFlags:\n      --cursor string   Opaque continuation cursor from Project discovery\n  -h, --help            help for list\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
       "flags": [
+        {
+          "name": "cursor",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
         {
           "name": "help",
           "short": "h",
@@ -2502,8 +2530,15 @@
       "aliases": [
         "find"
       ],
-      "help": "Search content in the token Workspace\n\nUsage:\n  assign search \u003cquery\u003e [flags]\n\nAliases:\n  search, find\n\nFlags:\n  -h, --help   help for search\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "help": "Search content in the token Workspace\n\nUsage:\n  assign search \u003cquery\u003e [flags]\n\nAliases:\n  search, find\n\nFlags:\n      --cursor string   Opaque continuation cursor from the same search\n  -h, --help            help for search\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
       "flags": [
+        {
+          "name": "cursor",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
         {
           "name": "help",
           "short": "h",
@@ -2876,7 +2911,7 @@
     {
       "path": "assign task create",
       "aliases": null,
-      "help": "Create a Task using canonical Workspace defaults\n\nUsage:\n  assign task create \u003ctitle\u003e [flags]\n\nFlags:\n      --description string       Description Markdown, or - for bounded UTF-8 stdin\n      --field string             Print only code\n  -h, --help                     help for create\n      --idempotency-key string   Original key for identical recovery; generated when omitted\n      --json                     Print the canonical Task and opaque receipt metadata\n      --priority string          Priority; omitted uses the Workspace creation default\n      --project string           Exact Project code; defaults to the selected Project\n      --project-id string        Original Project UUID printed before an uncertain create\n      --workspace-id string      Credential Workspace UUID; required for personal/service tokens and original recovery\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "help": "Create a Task using canonical Workspace defaults\n\nUsage:\n  assign task create \u003ctitle\u003e [flags]\n\nFlags:\n      --description string       Description Markdown, or - for bounded UTF-8 stdin\n      --field string             Print only code\n  -h, --help                     help for create\n      --idempotency-key string   Original key for identical recovery; generated when omitted\n      --json                     Print the canonical Task and opaque receipt metadata\n      --priority string          Priority; omitted uses the Workspace creation default\n      --project string           Exact Project code; defaults to the selected Project\n      --project-id string        Original Project UUID printed before an uncertain create\n      --workspace-id string      Credential Workspace UUID for original recovery\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
       "flags": [
         {
           "name": "description",
@@ -3524,8 +3559,15 @@
       "aliases": [
         "ls"
       ],
-      "help": "List available Workspaces\n\nUsage:\n  assign workspace list [flags]\n\nAliases:\n  list, ls\n\nFlags:\n  -h, --help   help for list\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
+      "help": "List available Workspaces\n\nUsage:\n  assign workspace list [flags]\n\nAliases:\n  list, ls\n\nFlags:\n      --cursor string   Opaque continuation cursor from Workspace discovery\n  -h, --help            help for list\n\nGlobal Flags:\n      --host string   Assign API host (HTTPS only, for this command) (default \"https://api.assign.so\")\n",
       "flags": [
+        {
+          "name": "cursor",
+          "short": "",
+          "type": "string",
+          "default": "",
+          "annotations": null
+        },
         {
           "name": "help",
           "short": "h",

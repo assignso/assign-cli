@@ -80,7 +80,7 @@ func TestRunLoginBindsLoopbackAndCompletesPKCEExchange(t *testing.T) {
 
 func TestAuthorizationTokenRefreshesAndRotatesStoredCredential(t *testing.T) {
 	t.Setenv("ASSIGN_TOKEN", "")
-	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+	server := newPreparedHTTPS(t, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if request.URL.Path != "/api/v1/dev/oauth/token" {
 			t.Fatalf("path = %s", request.URL.Path)
 		}

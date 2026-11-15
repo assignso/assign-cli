@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -96,13 +97,33 @@ func navigationURL(raw string, workspace cliWorkspace, family, path string) erro
 	return nil
 }
 
-func projectResourcePage(ctx context.Context, transport *operationTransport, workspace, code, cursor string) ([]navigationProject, *string, error) {
-	query := url.Values{"limit": {"100"}}
-	if code != "" {
-		query.Set("code", code)
-	}
+// Page cursors are opaque, Workspace- and query-bound values passed back unchanged.
+func pageQuery(limit, cursor string) url.Values {
+	query := url.Values{"limit": {limit}}
 	if cursor != "" {
 		query.Set("cursor", cursor)
+	}
+	return query
+}
+
+func validReadCursor(cursor string) bool {
+	return len(cursor) <= 4096 && safeInline(cursor) == cursor
+}
+
+func validNextCursor(next *string, current string) bool {
+	return next == nil || (*next != "" && *next != current && validReadCursor(*next))
+}
+
+func writeReadContinuation(diagnostics io.Writer, next *string) {
+	if next != nil {
+		_, _ = fmt.Fprintf(diagnostics, "assign: next cursor: %s\n", *next)
+	}
+}
+
+func projectResourcePage(ctx context.Context, transport *operationTransport, workspace, code, cursor string) ([]navigationProject, *string, error) {
+	query := pageQuery("100", cursor)
+	if code != "" {
+		query.Set("code", code)
 	}
 	data, _, err := taskResourceExchange(ctx, transport, http.MethodGet, "/api/v1/workspaces/"+workspace+"/projects?"+query.Encode(), "", "", http.StatusOK)
 	if err != nil {

@@ -242,23 +242,18 @@ func newTaskCreateCommand(opts *options, client *http.Client) *cobra.Command {
 			return err
 		}
 		defer transport.client.CloseIdleConnections()
-		workspace := cliWorkspace{ID: workspaceFence}
-		// The retained developer Workspace ceremony is exclusively CLI OAuth.
-		// Personal/service bearer users supply the bound Workspace explicitly;
-		// never try alternate endpoints or infer tenancy from an opaque token.
-		if workspace.ID == "" {
-			data, _, readErr := taskCreateExchange(ctx, transport, http.MethodGet, "/api/v1/dev/workspace", "", "", http.StatusOK)
-			if readErr != nil {
-				return readErr
-			}
-			if json.Unmarshal(data, &workspace) != nil || !canonicalIdentifier(workspace.ID) || workspace.Slug == "" {
-				return newExitError(ExitOperation, "credential Workspace identity is incomplete")
-			}
+		workspace, err := resourceWorkspace(ctx, transport, workspaceFence)
+		if err != nil {
+			return err
 		}
 		projectID := projectFence
 		if projectID == "" {
 			code := strings.ToUpper(strings.TrimSpace(project))
 			if code == "" {
+				workspace, err = workspaceDetails(ctx, transport, workspace)
+				if err != nil {
+					return err
+				}
 				code, err = opts.contexts.LoadProject(transport.host, workspace.Slug)
 				if err != nil {
 					return newExitError(ExitContext, "no selected Project; supply --project CODE")
@@ -309,7 +304,7 @@ func newTaskCreateCommand(opts *options, client *http.Client) *cobra.Command {
 	command.Flags().StringVar(&key, "idempotency-key", "", "Original key for identical recovery; generated when omitted")
 	command.Flags().StringVar(&field, "field", "", "Print only code")
 	command.Flags().BoolVar(&jsonOutput, "json", false, "Print the canonical Task and opaque receipt metadata")
-	command.Flags().StringVar(&workspaceFence, "workspace-id", "", "Credential Workspace UUID; required for personal/service tokens and original recovery")
+	command.Flags().StringVar(&workspaceFence, "workspace-id", "", "Credential Workspace UUID for original recovery")
 	command.Flags().StringVar(&projectFence, "project-id", "", "Original Project UUID printed before an uncertain create")
 	return command
 }

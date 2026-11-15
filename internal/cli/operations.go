@@ -11,6 +11,7 @@ import (
 	"math/rand/v2"
 	"mime"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -175,11 +176,12 @@ func newOperationCommand(opts *options, client *http.Client) *cobra.Command {
 }
 
 type operationTransport struct {
-	host, token string
-	client      http.Client
-	now         func() time.Time
-	sleep       func(context.Context, time.Duration) error
-	jitter      func(time.Duration) time.Duration
+	host, token    string
+	explicitBearer bool
+	client         http.Client
+	now            func() time.Time
+	sleep          func(context.Context, time.Duration) error
+	jitter         func(time.Duration) time.Duration
 }
 
 func newOperationTransport(ctx context.Context, opts *options, client *http.Client) (*operationTransport, error) {
@@ -189,11 +191,15 @@ func newOperationTransport(ctx context.Context, opts *options, client *http.Clie
 	}
 	// Refresh at most once, before the command. A denial during recovery stops
 	// instead of nesting refresh/retry loops or changing grant families.
-	token, err := authorizationToken(ctx, host, client, opts.credentials)
-	if err != nil {
-		return nil, err
+	token := strings.TrimSpace(os.Getenv("ASSIGN_TOKEN"))
+	explicitBearer := token != ""
+	if !explicitBearer {
+		token, err = interactiveAuthorizationToken(ctx, host, client, opts.credentials)
+		if err != nil {
+			return nil, err
+		}
 	}
-	transport := &operationTransport{host: host, token: token, client: *client, now: time.Now, sleep: sleepOperation, jitter: func(cap time.Duration) time.Duration { return time.Duration(rand.Int64N(int64(cap) + 1)) }}
+	transport := &operationTransport{host: host, token: token, explicitBearer: explicitBearer, client: *client, now: time.Now, sleep: sleepOperation, jitter: func(cap time.Duration) time.Duration { return time.Duration(rand.Int64N(int64(cap) + 1)) }}
 	base := client.Transport
 	if base == nil {
 		base = http.DefaultTransport

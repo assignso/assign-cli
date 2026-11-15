@@ -44,7 +44,7 @@ func TestHostedAgentAndOperationCommandsUseCanonicalSingleExchange(t *testing.T)
 	for _, action := range []string{"submit", "show", "cancel", "wait"} {
 		t.Run(action, func(t *testing.T) {
 			calls := 0
-			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := newPreparedHTTPS(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				calls++
 				if r.Header.Get("Authorization") != "Bearer prepared-terminal-token" || r.Header.Get("Accept-Encoding") != "identity" || r.Header.Get("If-Match") != "" || r.Header.Get("X-CSRF-Token") != "" || r.ProtoMajor != 1 || !r.Close {
 					t.Errorf("unexpected custody or representation headers")
@@ -76,7 +76,7 @@ func TestHostedAgentAndOperationCommandsUseCanonicalSingleExchange(t *testing.T)
 			if action == "submit" || action == "cancel" {
 				args = append(args, "--idempotency-key", "prepared-operation-key-01")
 			}
-			out, diagnostics, err := executeTaskFixture(t, server, "", args...)
+			out, diagnostics, err := executePreparedTaskFixture(t, server, "", args...)
 			if err != nil || calls != 1 || !strings.Contains(out, operationFixtureID) || strings.Contains(out, "prepared-terminal-token") {
 				t.Fatalf("out=%q diagnostics=%q err=%v calls=%d", out, diagnostics, err, calls)
 			}

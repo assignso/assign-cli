@@ -1,10 +1,8 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -69,83 +67,6 @@ func mutationKey(value string) (string, error) {
 		}
 	}
 	return value, nil
-}
-
-// There are no automatic mutation retries. The caller retains the same key and
-// identical arguments to reconcile an uncertain outcome with Core.
-func taskMutation(ctx context.Context, opts *options, client *http.Client, path string, body any, key string, revision int64, status int, target any) error {
-	host, err := validatedHost(opts.host)
-	if err != nil {
-		return newExitError(ExitArguments, "%s", err)
-	}
-	var reader io.Reader
-	if body != nil {
-		data, err := json.Marshal(body)
-		if err != nil {
-			return newExitError(ExitOperation, "encode Task request")
-		}
-		if len(data) > maxTaskTextBytes+8*1024 {
-			return newExitError(ExitArguments, "encoded Task write exceeds the payload limit")
-		}
-		reader = bytes.NewReader(data)
-	}
-	token, err := authorizationToken(ctx, host, client, opts.credentials)
-	if err != nil {
-		return err
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, host+path, reader)
-	if err != nil {
-		return newExitError(ExitOperation, "prepare Task request")
-	}
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Authorization", "Bearer "+token)
-	request.Header.Set("Idempotency-Key", key)
-	if body != nil {
-		request.Header.Set("Content-Type", "application/json")
-	}
-	if revision > 0 {
-		request.Header.Set("If-Match", fmt.Sprintf("\"%d\"", revision))
-	}
-	uncertain := func() error {
-		return newExitError(ExitOperation, "Task write outcome is uncertain; reconcile by retrying identical arguments with --idempotency-key %s (including the original revision, if supplied)", key)
-	}
-	writeClient := *client
-	writeClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	response, err := writeClient.Do(request)
-	if err != nil {
-		if errors.Is(err, context.Canceled) {
-			return fmt.Errorf("%w; %s", err, uncertain())
-		}
-		return uncertain()
-	}
-	defer response.Body.Close()
-	switch response.StatusCode {
-	case http.StatusUnauthorized:
-		return newExitError(ExitAuthentication, "authentication was rejected; run assign login again")
-	case http.StatusForbidden:
-		return newExitError(ExitAuthentication, "the credential does not have permission for this Task write")
-	case http.StatusNotFound:
-		return newExitError(ExitContext, "the requested Project or Task was not found")
-	case http.StatusConflict:
-		if err := lifecycleConflict(response.Body); err != nil {
-			return err
-		}
-		return newExitError(ExitConflict, "Task write conflict; reconcile current state before a new operation; --idempotency-key %s is retained only for an identical retry", key)
-	}
-	if response.StatusCode >= 500 {
-		return uncertain()
-	}
-	if response.StatusCode != status {
-		return newExitError(ExitOperation, "Task write failed with HTTP %d", response.StatusCode)
-	}
-	decoder := json.NewDecoder(io.LimitReader(response.Body, 2*1024*1024))
-	if err := decoder.Decode(target); err != nil {
-		return uncertain()
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return uncertain()
-	}
-	return nil
 }
 
 func newTaskContextCommand(opts *options, client *http.Client) *cobra.Command {
@@ -334,7 +255,7 @@ func newTaskCommentsCommand(opts *options, client *http.Client) *cobra.Command {
 	return command
 }
 
-// Read-only: one bounded page, no fetch-all, no retries, no writes.
+// Read-only: one bounded page with safe-read recovery.
 func runTaskCommentsPage(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client, code string, options commentPageOptions) error {
 	if err := options.validate(); err != nil {
 		return err
@@ -363,7 +284,7 @@ func runTaskCommentsPage(ctx context.Context, output, diagnostics io.Writer, opt
 		NextCursor *string               `json:"next_cursor"`
 		HasMore    *bool                 `json:"has_more"`
 	}
-	if json.Unmarshal(data, &canonical) != nil || canonical.Data == nil || !strongTaskValidator(headers.Get("ETag")) {
+	if unmarshalResourcePage(data, &canonical) != nil || !strongTaskValidator(headers.Get("ETag")) {
 		return newExitError(ExitOperation, "Comment page representation is incomplete")
 	}
 	page := struct {
@@ -378,14 +299,8 @@ func runTaskCommentsPage(ctx context.Context, output, diagnostics io.Writer, opt
 		}
 		page.Items = append(page.Items, projected)
 	}
-	if page.Items == nil || page.HasMore == nil {
-		return newExitError(ExitOperation, "comment page response is incomplete")
-	}
-	if len(page.Items) > options.limit || (*page.HasMore && (page.NextCursor == nil || *page.NextCursor == "")) || (!*page.HasMore && page.NextCursor != nil && *page.NextCursor != "") {
+	if page.HasMore == nil || *page.HasMore != (page.NextCursor != nil) || len(page.Items) > options.limit || !validNextCursor(page.NextCursor, options.cursor) {
 		return newExitError(ExitOperation, "comment page response has invalid continuation or exceeds its limit")
-	}
-	if page.NextCursor != nil && (len(*page.NextCursor) > 4096 || safeInline(*page.NextCursor) != *page.NextCursor) {
-		return newExitError(ExitOperation, "comment page response has an invalid cursor")
 	}
 	for _, item := range page.Items {
 		if item.Actor == "" || item.CreatedAt == "" || item.Revision < 1 {
@@ -420,10 +335,6 @@ func runProjectTaskPage(ctx context.Context, output, diagnostics io.Writer, opts
 	if err := options.validate(); err != nil {
 		return err
 	}
-	code, err := resolveProjectCode(ctx, opts, client, code)
-	if err != nil {
-		return err
-	}
 	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
 	defer cancel()
 	transport, err := newOperationTransport(ctx, opts, client)
@@ -432,6 +343,17 @@ func runProjectTaskPage(ctx context.Context, output, diagnostics io.Writer, opts
 	}
 	defer transport.client.CloseIdleConnections()
 	workspace, err := resourceWorkspace(ctx, transport, "")
+	if err != nil {
+		return err
+	}
+	includeURL := options.format == "json"
+	if includeURL {
+		workspace, err = workspaceDetails(ctx, transport, workspace)
+		if err != nil {
+			return err
+		}
+	}
+	code, err = resolveProjectCode(ctx, opts, transport, workspace, code)
 	if err != nil {
 		return err
 	}
@@ -482,7 +404,7 @@ func runProjectTaskPage(ctx context.Context, output, diagnostics io.Writer, opts
 				item.Category = status.Category
 			}
 		}
-		projected, err := canonicalTaskNavigation(item, workspace)
+		projected, err := canonicalTaskNavigation(item, workspace, includeURL)
 		if err != nil {
 			return err
 		}

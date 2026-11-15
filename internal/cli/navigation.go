@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -76,9 +75,11 @@ func newWorkspaceCommand(opts *options, client *http.Client) *cobra.Command {
 			return runWorkspaceCurrent(command.Context(), command.OutOrStdout(), opts, client, false)
 		},
 	}
+	var cursor string
 	list := &cobra.Command{Use: "list", Aliases: []string{"ls"}, Short: "List available Workspaces", Args: noArgs, RunE: func(command *cobra.Command, _ []string) error {
-		return runWorkspaceList(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client)
+		return runWorkspaceList(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, cursor)
 	}}
+	list.Flags().StringVar(&cursor, "cursor", "", "Opaque continuation cursor from Workspace discovery")
 	current := &cobra.Command{Use: "current", Aliases: []string{"cur"}, Short: "Print the current Workspace", Args: noArgs, RunE: func(command *cobra.Command, _ []string) error {
 		return runWorkspaceCurrent(command.Context(), command.OutOrStdout(), opts, client, false)
 	}}
@@ -105,9 +106,11 @@ func newProjectCommand(opts *options, client *http.Client) *cobra.Command {
 			return runProjectShow(command.Context(), command.OutOrStdout(), opts, client, code)
 		},
 	}
+	var cursor, documentCursor string
 	list := &cobra.Command{Use: "list", Aliases: []string{"ls"}, Short: "List Projects in the current Workspace", Args: noArgs, RunE: func(command *cobra.Command, _ []string) error {
-		return runProjectList(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client)
+		return runProjectList(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, cursor)
 	}}
+	list.Flags().StringVar(&cursor, "cursor", "", "Opaque continuation cursor from Project discovery")
 	current := &cobra.Command{Use: "current", Aliases: []string{"cur"}, Short: "Print the selected Project code", Args: noArgs, RunE: func(command *cobra.Command, _ []string) error {
 		code, err := currentProject(command.Context(), opts, client)
 		if err != nil {
@@ -132,12 +135,9 @@ func newProjectCommand(opts *options, client *http.Client) *cobra.Command {
 		if len(args) == 1 {
 			code = args[0]
 		}
-		code, err := resolveProjectCode(command.Context(), opts, client, code)
-		if err != nil {
-			return err
-		}
-		return runDocumentList(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, code)
+		return runDocumentList(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, code, documentCursor, true)
 	}}
+	documents.Flags().StringVar(&documentCursor, "cursor", "", "Opaque continuation cursor from the same Project")
 	urlCommand := &cobra.Command{Use: "url [project-code]", Short: "Print a Project's canonical browser URL", Args: cobra.MaximumNArgs(1), RunE: func(command *cobra.Command, args []string) error {
 		code := ""
 		if len(args) == 1 {
@@ -165,13 +165,14 @@ func newDocumentCommand(opts *options, client *http.Client) *cobra.Command {
 			if len(args) == 1 {
 				return runDocumentShow(command.Context(), command.OutOrStdout(), opts, client, args[0])
 			}
-			return runDocumentList(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, "")
+			return runDocumentList(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, "", "", false)
 		},
 	}
-	var projectCode string
+	var projectCode, cursor string
 	list := &cobra.Command{Use: "list", Aliases: []string{"ls"}, Short: "List Documents in the current Workspace", Args: noArgs, RunE: func(command *cobra.Command, _ []string) error {
-		return runDocumentList(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, projectCode)
+		return runDocumentList(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, projectCode, cursor, false)
 	}}
+	list.Flags().StringVar(&cursor, "cursor", "", "Opaque continuation cursor from the same Document list")
 	list.Flags().StringVarP(&projectCode, "project", "p", "", "Limit Documents to a Project code")
 	show := &cobra.Command{Use: "show <document-path>", Aliases: []string{"view"}, Short: "Show a Document as text", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
 		return runDocumentShow(command.Context(), command.OutOrStdout(), opts, client, args[0])
@@ -186,66 +187,19 @@ func newDocumentCommand(opts *options, client *http.Client) *cobra.Command {
 	return command
 }
 
-func authorizedJSON(ctx context.Context, opts *options, client *http.Client, method, path string, body any, target any) error {
-	host, err := validatedHost(opts.host)
-	if err != nil {
-		return newExitError(ExitArguments, "%s", err)
-	}
-	token, err := authorizationToken(ctx, host, client, opts.credentials)
-	if err != nil {
-		return err
-	}
-	var reader io.Reader
-	if body != nil {
-		encoded, encodeErr := json.Marshal(body)
-		if encodeErr != nil {
-			return newExitError(ExitOperation, "encode request")
-		}
-		reader = bytes.NewReader(encoded)
-	}
-	request, err := http.NewRequestWithContext(ctx, method, host+path, reader)
-	if err != nil {
-		return newExitError(ExitOperation, "prepare request")
-	}
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Authorization", "Bearer "+token)
-	if body != nil {
-		request.Header.Set("Content-Type", "application/json")
-	}
-	response, err := client.Do(request)
-	if err != nil {
-		return newExitError(ExitOperation, "request Assign: %v", err)
-	}
-	defer response.Body.Close()
-	if response.StatusCode == http.StatusUnauthorized {
-		return newExitError(ExitAuthentication, "authentication was rejected; run assign login again")
-	}
-	if response.StatusCode == http.StatusForbidden {
-		return newExitError(ExitAuthentication, "this command requires interactive CLI login")
-	}
-	if response.StatusCode == http.StatusNotFound {
-		return newExitError(ExitContext, "the requested Workspace, Project, Task, or Document was not found")
-	}
-	if response.StatusCode != http.StatusOK {
-		return newExitError(ExitOperation, "Assign request failed with HTTP %d", response.StatusCode)
-	}
-	decoder := json.NewDecoder(io.LimitReader(response.Body, 2*1024*1024))
-	if err := decoder.Decode(target); err != nil {
-		return newExitError(ExitOperation, "decode Assign response")
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return newExitError(ExitOperation, "decode Assign response")
-	}
-	return nil
-}
-
 func currentWorkspace(ctx context.Context, opts *options, client *http.Client) (cliWorkspace, error) {
-	var workspace cliWorkspace
-	err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/dev/workspace", nil, &workspace)
-	if err == nil && (workspace.Slug == "" || workspace.Name == "") {
-		err = newExitError(ExitOperation, "Workspace response is incomplete")
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
+	transport, err := newOperationTransport(ctx, opts, client)
+	if err != nil {
+		return cliWorkspace{}, err
 	}
-	return workspace, err
+	defer transport.client.CloseIdleConnections()
+	workspace, err := resourceWorkspace(ctx, transport, "")
+	if err != nil {
+		return cliWorkspace{}, err
+	}
+	return workspaceDetails(ctx, transport, workspace)
 }
 
 func runWorkspaceCurrent(ctx context.Context, output io.Writer, opts *options, client *http.Client, detail bool) error {
@@ -254,29 +208,54 @@ func runWorkspaceCurrent(ctx context.Context, output io.Writer, opts *options, c
 		return err
 	}
 	if detail {
-		_, err = fmt.Fprintf(output, "# %s\n\nSlug: %s\nRole: %s\n", safeInline(workspace.Name), safeInline(workspace.Slug), safeInline(workspace.Role))
+		_, err = fmt.Fprintf(output, "# %s\n\nSlug: %s\n", safeInline(workspace.Name), safeInline(workspace.Slug))
+		if err == nil && workspace.Role != "" {
+			_, err = fmt.Fprintf(output, "Role: %s\n", safeInline(workspace.Role))
+		}
 	} else {
-		_, err = fmt.Fprintln(output, workspace.Slug)
+		_, err = fmt.Fprintln(output, safeInline(workspace.Slug))
 	}
 	return err
 }
 
-func runWorkspaceList(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client) error {
+func runWorkspaceList(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client, cursor string) error {
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
+	if !validReadCursor(cursor) || len(cursor) > 2048 {
+		return newExitError(ExitArguments, "cursor is invalid or too long")
+	}
+	if strings.TrimSpace(os.Getenv("ASSIGN_TOKEN")) != "" {
+		return newExitError(ExitAuthentication, "ASSIGN_TOKEN is Workspace-bound and cannot list Workspace memberships")
+	}
+	transport, err := newOperationTransport(ctx, opts, client)
+	if err != nil {
+		return err
+	}
+	defer transport.client.CloseIdleConnections()
+	query := pageQuery("100", cursor)
+	var wire json.RawMessage
 	var page struct {
 		Items   []cliWorkspace `json:"data"`
-		HasMore bool           `json:"has_more"`
+		Next    *string        `json:"next_cursor"`
+		HasMore *bool          `json:"has_more"`
 	}
-	if err := authorizedJSON(ctx, opts, client, http.MethodGet, "/api/v1/dev/workspaces?limit=100", nil, &page); err != nil {
+	if err := transport.exchangeJSON(ctx, http.MethodGet, "/api/v1/dev/workspaces?"+query.Encode(), "Workspace", nil, &wire); err != nil {
 		return err
+	}
+	if unmarshalResourcePage(wire, &page) != nil || len(page.Items) > 100 || page.HasMore == nil || *page.HasMore != (page.Next != nil) || !validNextCursor(page.Next, cursor) || (page.Next != nil && len(*page.Next) > 2048) {
+		return newExitError(ExitOperation, "Workspace page is incomplete")
+	}
+	for _, workspace := range page.Items {
+		if workspace.Slug == "" || workspace.Name == "" {
+			return newExitError(ExitOperation, "Workspace identity is incomplete")
+		}
 	}
 	for _, workspace := range page.Items {
 		if _, err := fmt.Fprintf(output, "%s  %s\n", safeInline(workspace.Slug), safeInline(workspace.Name)); err != nil {
 			return err
 		}
 	}
-	if page.HasMore {
-		_, _ = fmt.Fprintln(diagnostics, "assign: more Workspaces are available; only the first 100 are shown")
-	}
+	writeReadContinuation(diagnostics, page.Next)
 	return nil
 }
 
@@ -284,27 +263,38 @@ func runWorkspaceSwitch(ctx context.Context, output io.Writer, opts *options, cl
 	if strings.TrimSpace(os.Getenv("ASSIGN_TOKEN")) != "" {
 		return newExitError(ExitAuthentication, "ASSIGN_TOKEN is Workspace-bound and cannot switch Workspaces")
 	}
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
+	transport, err := newOperationTransport(ctx, opts, client)
+	if err != nil {
+		return err
+	}
+	defer transport.client.CloseIdleConnections()
 	var result struct {
 		Workspace    cliWorkspace `json:"workspace"`
 		AccessToken  string       `json:"access_token"`
 		RefreshToken string       `json:"refresh_token"`
+		TokenType    string       `json:"token_type"`
 		ExpiresIn    int64        `json:"expires_in"`
 	}
-	if err := authorizedJSON(ctx, opts, client, http.MethodPut, "/api/v1/dev/workspace", map[string]string{"slug": strings.TrimSpace(slug)}, &result); err != nil {
+	slug = strings.TrimSpace(slug)
+	if err := transport.exchangeJSON(ctx, http.MethodPut, "/api/v1/dev/workspace", "Workspace", map[string]string{"slug": slug}, &result); err != nil {
 		return err
 	}
-	if result.Workspace.Slug == "" || result.AccessToken == "" || result.RefreshToken == "" || result.ExpiresIn < 1 {
+	if result.Workspace.Slug != slug || result.Workspace.Name == "" || result.AccessToken == "" || result.RefreshToken == "" || result.TokenType != "Bearer" || result.ExpiresIn < 1 || result.ExpiresIn > int64(time.Duration(1<<63-1)/time.Second) {
 		return newExitError(ExitOperation, "Workspace switch response is incomplete")
 	}
-	host, _ := validatedHost(opts.host)
-	if err := opts.credentials.Save(host, storedCredential{AccessToken: result.AccessToken, RefreshToken: result.RefreshToken, ExpiresAt: time.Now().UTC().Add(time.Duration(result.ExpiresIn) * time.Second)}); err != nil {
+	if err := opts.credentials.Save(transport.host, storedCredential{AccessToken: result.AccessToken, RefreshToken: result.RefreshToken, ExpiresAt: time.Now().UTC().Add(time.Duration(result.ExpiresIn) * time.Second)}); err != nil {
 		return newExitError(ExitOperation, "store switched CLI credential: %v", err)
 	}
-	_, err := fmt.Fprintln(output, result.Workspace.Slug)
+	_, err = fmt.Fprintln(output, safeInline(result.Workspace.Slug))
 	return err
 }
 
-func runProjectList(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client) error {
+func runProjectList(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client, cursor string) error {
+	if !validReadCursor(cursor) {
+		return newExitError(ExitArguments, "cursor is invalid or too long")
+	}
 	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
 	defer cancel()
 	transport, err := newOperationTransport(ctx, opts, client)
@@ -316,18 +306,19 @@ func runProjectList(ctx context.Context, output, diagnostics io.Writer, opts *op
 	if err != nil {
 		return err
 	}
-	items, next, err := projectResourcePage(ctx, transport, workspace.ID, "", "")
+	items, next, err := projectResourcePage(ctx, transport, workspace.ID, "", cursor)
 	if err != nil {
 		return err
+	}
+	if !validNextCursor(next, cursor) {
+		return newExitError(ExitOperation, "invalid Projects continuation")
 	}
 	for _, project := range items {
 		if _, err := fmt.Fprintf(output, "%s  %s\n", safeInline(project.Key), safeInline(project.Name)); err != nil {
 			return err
 		}
 	}
-	if next != nil {
-		_, _ = fmt.Fprintln(diagnostics, "assign: more Projects are available; only the first 100 are shown")
-	}
+	writeReadContinuation(diagnostics, next)
 	return nil
 }
 
@@ -337,7 +328,11 @@ func currentProject(ctx context.Context, opts *options, client *http.Client) (st
 		return "", err
 	}
 	host, _ := validatedHost(opts.host)
-	code, err := opts.contexts.LoadProject(host, workspace.Slug)
+	return loadSelectedProject(opts, host, workspace.Slug)
+}
+
+func loadSelectedProject(opts *options, host, slug string) (string, error) {
+	code, err := opts.contexts.LoadProject(host, slug)
 	if errors.Is(err, os.ErrNotExist) {
 		return "", newExitError(ExitContext, "no current Project; run assign project switch <project-code>")
 	}
@@ -347,39 +342,47 @@ func currentProject(ctx context.Context, opts *options, client *http.Client) (st
 	return code, nil
 }
 
-func resolveProjectCode(ctx context.Context, opts *options, client *http.Client, code string) (string, error) {
-	code = strings.ToUpper(strings.TrimSpace(code))
-	if code != "" {
+func resolveProjectCode(ctx context.Context, opts *options, transport *operationTransport, workspace cliWorkspace, code string) (string, error) {
+	if code = strings.ToUpper(strings.TrimSpace(code)); code != "" {
 		return code, nil
 	}
-	return currentProject(ctx, opts, client)
+	workspace, err := workspaceDetails(ctx, transport, workspace)
+	if err != nil {
+		return "", err
+	}
+	return loadSelectedProject(opts, transport.host, workspace.Slug)
 }
 
-func getProject(ctx context.Context, opts *options, client *http.Client, code string) (cliProject, error) {
-	code, err := resolveProjectCode(ctx, opts, client, code)
-	if err != nil {
-		return cliProject{}, err
-	}
+func getProject(ctx context.Context, opts *options, client *http.Client, code string) (cliProject, cliWorkspace, error) {
 	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
 	defer cancel()
 	transport, err := newOperationTransport(ctx, opts, client)
 	if err != nil {
-		return cliProject{}, err
+		return cliProject{}, cliWorkspace{}, err
 	}
 	defer transport.client.CloseIdleConnections()
 	workspace, err := resourceWorkspace(ctx, transport, "")
 	if err != nil {
-		return cliProject{}, err
+		return cliProject{}, cliWorkspace{}, err
+	}
+	workspace, err = workspaceDetails(ctx, transport, workspace)
+	if err != nil {
+		return cliProject{}, cliWorkspace{}, err
+	}
+	code, err = resolveProjectCode(ctx, opts, transport, workspace, code)
+	if err != nil {
+		return cliProject{}, cliWorkspace{}, err
 	}
 	project, err := findProjectResource(ctx, transport, workspace.ID, code)
 	if err != nil {
-		return cliProject{}, err
+		return cliProject{}, cliWorkspace{}, err
 	}
-	return projectNavigation(project, workspace)
+	result, err := projectNavigation(project, workspace)
+	return result, workspace, err
 }
 
 func runProjectShow(ctx context.Context, output io.Writer, opts *options, client *http.Client, code string) error {
-	project, err := getProject(ctx, opts, client, code)
+	project, _, err := getProject(ctx, opts, client, code)
 	if err != nil {
 		return err
 	}
@@ -388,7 +391,7 @@ func runProjectShow(ctx context.Context, output io.Writer, opts *options, client
 }
 
 func runProjectURL(ctx context.Context, output io.Writer, opts *options, client *http.Client, code string, launch bool) error {
-	project, err := getProject(ctx, opts, client, code)
+	project, _, err := getProject(ctx, opts, client, code)
 	if err != nil {
 		return err
 	}
@@ -396,11 +399,7 @@ func runProjectURL(ctx context.Context, output io.Writer, opts *options, client 
 }
 
 func runProjectSwitch(ctx context.Context, output io.Writer, opts *options, client *http.Client, code string) error {
-	project, err := getProject(ctx, opts, client, code)
-	if err != nil {
-		return err
-	}
-	workspace, err := currentWorkspace(ctx, opts, client)
+	project, workspace, err := getProject(ctx, opts, client, code)
 	if err != nil {
 		return err
 	}
@@ -412,7 +411,10 @@ func runProjectSwitch(ctx context.Context, output io.Writer, opts *options, clie
 	return err
 }
 
-func runDocumentList(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client, projectCode string) error {
+func runDocumentList(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client, projectCode, cursor string, requireProject bool) error {
+	if !validReadCursor(cursor) {
+		return newExitError(ExitArguments, "cursor is invalid or too long")
+	}
 	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
 	defer cancel()
 	transport, err := newOperationTransport(ctx, opts, client)
@@ -424,7 +426,13 @@ func runDocumentList(ctx context.Context, output, diagnostics io.Writer, opts *o
 	if err != nil {
 		return err
 	}
-	query := url.Values{"limit": {"100"}}
+	if requireProject {
+		projectCode, err = resolveProjectCode(ctx, opts, transport, workspace, projectCode)
+		if err != nil {
+			return err
+		}
+	}
+	query := pageQuery("100", cursor)
 	if code := strings.ToUpper(strings.TrimSpace(projectCode)); code != "" {
 		id, err := resolveCreateProject(ctx, transport, workspace.ID, code)
 		if err != nil {
@@ -436,14 +444,15 @@ func runDocumentList(ctx context.Context, output, diagnostics io.Writer, opts *o
 	if err != nil {
 		return err
 	}
+	if !validNextCursor(next, cursor) {
+		return newExitError(ExitOperation, "invalid Documents continuation")
+	}
 	for _, item := range items {
 		if _, err := fmt.Fprintf(output, "%s  %s\n", safeInline(item.Path), safeInline(item.Title)); err != nil {
 			return err
 		}
 	}
-	if next != nil {
-		_, _ = fmt.Fprintln(diagnostics, "assign: more Documents are available; only the first 100 are shown")
-	}
+	writeReadContinuation(diagnostics, next)
 	return nil
 }
 
@@ -500,6 +509,10 @@ func readResourceDocument(ctx context.Context, opts *options, client *http.Clien
 	resource := items[0]
 	if resource.Path != path {
 		return cliDocument{}, newExitError(ExitOperation, "Document path does not match")
+	}
+	workspace, err = workspaceDetails(ctx, transport, workspace)
+	if err != nil {
+		return cliDocument{}, err
 	}
 	if err = navigationURL(resource.WebURL, workspace, "documents", resource.Path); err != nil {
 		return cliDocument{}, err

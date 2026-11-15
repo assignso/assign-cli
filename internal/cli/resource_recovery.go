@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"math/rand/v2"
 	"net/http"
@@ -109,4 +111,47 @@ func canonicalRetryAfter(header http.Header, now time.Time) (time.Duration, bool
 	}
 	date, err := http.ParseTime(raw)
 	return max(0, date.Sub(now)), err == nil
+}
+
+func (transport *operationTransport) exchangeJSON(ctx context.Context, method, path, operation string, body, target any) error {
+	var reader io.Reader
+	if body != nil {
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			return newExitError(ExitOperation, "encode %s request", operation)
+		}
+		reader = bytes.NewReader(encoded)
+	}
+	request, err := http.NewRequestWithContext(ctx, method, transport.host+path, reader)
+	if err != nil {
+		return newExitError(ExitOperation, "prepare %s request", operation)
+	}
+	request.GetBody = nil
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Accept-Encoding", "identity")
+	request.Header.Set("Authorization", "Bearer "+transport.token)
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	response, err := transport.canonicalExchange(request)
+	if err != nil {
+		return newExitError(ExitOperation, "request %s: %v", operation, err)
+	}
+	defer response.Body.Close()
+	switch response.StatusCode {
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return newExitError(ExitAuthentication, "%s access denied (HTTP %d); check the credential and its scopes", operation, response.StatusCode)
+	case http.StatusNotFound:
+		return newExitError(ExitContext, "the requested %s is unavailable", operation)
+	case http.StatusOK:
+	default:
+		return productReadError(response, operation)
+	}
+	const maxResponse = 2 * 1024 * 1024
+	data, err := io.ReadAll(io.LimitReader(response.Body, maxResponse+1))
+	encoding := response.Header.Get("Content-Encoding")
+	if err != nil || len(data) > maxResponse || (encoding != "" && encoding != "identity") || json.Unmarshal(data, target) != nil {
+		return newExitError(ExitOperation, "decode %s response", operation)
+	}
+	return nil
 }

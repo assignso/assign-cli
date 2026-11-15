@@ -396,6 +396,10 @@ func authorizationToken(ctx context.Context, host string, client *http.Client, s
 	if token := strings.TrimSpace(os.Getenv("ASSIGN_TOKEN")); token != "" {
 		return token, nil
 	}
+	return interactiveAuthorizationToken(ctx, host, client, store)
+}
+
+func interactiveAuthorizationToken(ctx context.Context, host string, client *http.Client, store credentialStore) (string, error) {
 	credential, err := store.Load(host)
 	if err != nil {
 		return "", newExitError(ExitAuthentication, "authentication is not configured; run assign login or set ASSIGN_TOKEN")

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -19,7 +18,7 @@ func TestCanonicalNavigationResources(t *testing.T) {
 	const milestone = "44444444-4444-4444-8444-444444444444"
 	const task = "55555555-5555-4555-8555-555555555555"
 	contentReads := 0
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := newPreparedHTTPS(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer apt_prepared" {
 			t.Errorf("credential changed")
 		}
@@ -28,7 +27,9 @@ func TestCanonicalNavigationResources(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/api/v1/dev/workspace":
+		case "/api/v1/auth-context":
+			writeWorkspaceBinding(w, workspace)
+		case "/api/v1/workspaces/" + workspace:
 			fmt.Fprintf(w, `{"id":%q,"name":"Assign","slug":"demo","role":"owner"}`, workspace)
 		case "/api/v1/workspaces/" + workspace + "/projects":
 			if r.URL.Query().Get("code") != "PRO" {
@@ -64,7 +65,7 @@ func TestCanonicalNavigationResources(t *testing.T) {
 	defer server.Close()
 	t.Setenv("ASSIGN_TOKEN", "apt_prepared")
 	opts := &options{host: server.URL, credentials: &memoryCredentialStore{}}
-	item, err := getProject(context.Background(), opts, server.Client(), "PRO")
+	item, _, err := getProject(context.Background(), opts, server.Client(), "PRO")
 	if err != nil || item.Revision != 9223372036854775807 || strings.Contains(item.URL, "external") {
 		t.Fatalf("Project: %+v %v", item, err)
 	}
@@ -81,7 +82,7 @@ func TestCanonicalNavigationResources(t *testing.T) {
 		t.Fatalf("Milestone: %+v %v", mile, err)
 	}
 	output.Reset()
-	if err = runMyWork(context.Background(), &output, server.URL, server.Client(), opts.credentials); err != nil || output.String() != "PRO-1  Ship\n" {
+	if err = runMyWork(context.Background(), &output, io.Discard, server.URL, server.Client(), opts.credentials, ""); err != nil || output.String() != "PRO-1  Ship\n" {
 		t.Fatalf("My Work: %q %v", output.String(), err)
 	}
 	output.Reset()
@@ -116,7 +117,9 @@ func canonicalNavigationTestHandler(t *testing.T, slug, origin string) http.Hand
 		const workspace = "11111111-1111-4111-8111-111111111111"
 		const project = "22222222-2222-4222-8222-222222222222"
 		switch r.URL.Path {
-		case "/api/v1/dev/workspace":
+		case "/api/v1/auth-context":
+			writeWorkspaceBinding(w, workspace)
+		case "/api/v1/workspaces/" + workspace:
 			fmt.Fprintf(w, `{"id":%q,"name":"Assign","slug":%q,"role":"owner"}`, workspace, slug)
 		case "/api/v1/workspaces/" + workspace + "/projects":
 			fmt.Fprintf(w, `{"data":[{"id":%q,"workspace_id":%q,"key":"PRO","name":"Product","path":"product","revision":"3","web_url":%q}],"next_cursor":null}`, project, workspace, origin+"/app/"+slug+"/projects/product")

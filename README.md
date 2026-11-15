@@ -182,6 +182,15 @@ brew upgrade --cask assign
 The CLI never silently checks for or installs an update while you run normal
 commands.
 
+## Canonical list continuation (upcoming)
+
+Bare My Work, search, Workspace memberships, Project list and Document lists read
+one page at a time. Pass the cursor printed on stderr back to the same command
+with `--cursor` and identical filters. Rows stay on stdout.
+
+`ASSIGN_TOKEN` uses its bound Workspace for product commands. Use `assign login`
+for Workspace list, Workspace switch and terminal Discuss.
+
 ## Develop locally
 
 Run the [TypeScript scaffold checks](command/README.md) from `command/` with `bun run test:local` after installing its locked dependencies. Local tests and compiled builds need no signing certificate.

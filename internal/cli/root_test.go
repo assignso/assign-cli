@@ -174,12 +174,16 @@ func TestBareCommandRequiresPersonalAPIToken(t *testing.T) {
 }
 
 func TestBareCommandListsMyWorkWithBearerToken(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+	server := newPreparedHTTPS(t, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if request.Header.Get("Authorization") != "Bearer apt_test" {
 			t.Errorf("credential changed")
 		}
 		response.Header().Set("Content-Type", "application/json")
-		if request.URL.Path == "/api/v1/dev/workspace" {
+		if request.URL.Path == "/api/v1/auth-context" {
+			writeWorkspaceBinding(response, "11111111-1111-4111-8111-111111111111")
+			return
+		}
+		if request.URL.Path == "/api/v1/workspaces/11111111-1111-4111-8111-111111111111" {
 			io.WriteString(response, `{"id":"11111111-1111-4111-8111-111111111111","name":"Demo","slug":"demo","role":"owner"}`)
 			return
 		}
@@ -219,8 +223,10 @@ func testCanonicalSearchCommand(t *testing.T, name string) {
 		}
 		response.Header().Set("Content-Type", "application/json")
 		switch request.URL.Path {
-		case "/api/v1/dev/workspace":
-			_, _ = response.Write([]byte(`{"id":"` + taskActionFixtureWorkspace + `","slug":"prepared"}`))
+		case "/api/v1/auth-context":
+			writeWorkspaceBinding(response, taskActionFixtureWorkspace)
+		case "/api/v1/workspaces/" + taskActionFixtureWorkspace:
+			_, _ = response.Write([]byte(`{"id":"` + taskActionFixtureWorkspace + `","slug":"prepared","name":"Prepared"}`))
 		case "/api/v1/workspaces/" + taskActionFixtureWorkspace + "/search":
 			if request.URL.Query().Encode() != "limit=50&q=ship+now" {
 				t.Errorf("Search query = %q", request.URL.RawQuery)
@@ -242,7 +248,7 @@ func testCanonicalSearchCommand(t *testing.T, name string) {
 	if stdout.String() != want || stderr.String() != "" {
 		t.Fatalf("output = (%q, %q)", stdout.String(), stderr.String())
 	}
-	if len(requests) != 2 || <-requests != "/api/v1/dev/workspace" || <-requests != "/api/v1/workspaces/"+taskActionFixtureWorkspace+"/search" {
+	if len(requests) != 2 || <-requests != "/api/v1/auth-context" || <-requests != "/api/v1/workspaces/"+taskActionFixtureWorkspace+"/search" {
 		t.Fatal("Search must resolve the credential Workspace once before querying it")
 	}
 }

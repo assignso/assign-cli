@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -87,6 +86,7 @@ func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client 
 	if client == nil {
 		client = http.DefaultClient
 	}
+	var myWorkCursor string
 	root := &cobra.Command{
 		Use:           "assign",
 		Short:         "Work with Assign from the terminal",
@@ -95,7 +95,7 @@ func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client 
 		SilenceUsage:  true,
 		Args:          noArgs,
 		RunE: func(command *cobra.Command, _ []string) error {
-			return runMyWork(command.Context(), command.OutOrStdout(), opts.host, client, opts.credentials)
+			return runMyWork(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts.host, client, opts.credentials, myWorkCursor)
 		},
 		PersistentPreRunE: func(command *cobra.Command, _ []string) error {
 			return resolveConfiguredHost(command, opts)
@@ -111,6 +111,8 @@ func newRootCommandWithClient(stdin io.Reader, stdout, stderr io.Writer, client 
 	root.CompletionOptions.SetDefaultShellCompDirective(cobra.ShellCompDirectiveNoFileComp)
 	root.ValidArgsFunction = completeAliases
 	root.PersistentFlags().StringVar(&opts.host, "host", defaultHost, "Assign API host (HTTPS only, for this command)")
+
+	root.Flags().StringVar(&myWorkCursor, "cursor", "", "Opaque continuation cursor from My Work")
 
 	root.AddCommand(withAliases(newVersionCommand()))
 	root.AddCommand(newUpdateCommand(releaseHTTPClient()))
@@ -235,7 +237,7 @@ func runTaskShow(ctx context.Context, output io.Writer, opts *options, client *h
 	if code == "" {
 		return newExitError(ExitArguments, "Task code must not be empty")
 	}
-	item, readErr := readResourceTaskShow(ctx, opts, client, code)
+	item, readErr := readResourceTaskShow(ctx, opts, client, code, field == "" || field == "url")
 	if readErr != nil {
 		return readErr
 	}
@@ -314,14 +316,17 @@ func newIdempotencyKey() (string, error) {
 }
 
 func newSearchCommand(opts *options, client *http.Client) *cobra.Command {
-	return &cobra.Command{
+	var cursor string
+	command := &cobra.Command{
 		Use:   "search <query>",
 		Short: "Search content in the token Workspace",
 		Args:  exactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			return runSearch(command.Context(), command.OutOrStdout(), opts.host, client, opts.credentials, args[0])
+			return runSearch(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts.host, client, opts.credentials, args[0], cursor)
 		},
 	}
+	command.Flags().StringVar(&cursor, "cursor", "", "Opaque continuation cursor from the same search")
+	return command
 }
 
 // Canonical SearchResultList: keep identifiers separate from immutable IDs.
@@ -334,10 +339,15 @@ type cliSearchResponse struct {
 		Title        string `json:"title"`
 	} `json:"data"`
 	NextCursor *string `json:"next_cursor"`
-	HasMore    bool    `json:"has_more"`
+	HasMore    *bool   `json:"has_more"`
 }
 
-func runSearch(ctx context.Context, output io.Writer, rawHost string, client *http.Client, store credentialStore, query string) error {
+func runSearch(ctx context.Context, output, diagnostics io.Writer, rawHost string, client *http.Client, store credentialStore, query, cursor string) error {
+	if !validReadCursor(cursor) || len(cursor) > 2048 {
+		return newExitError(ExitArguments, "cursor is invalid or too long")
+	}
+	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
+	defer cancel()
 	transport, err := newOperationTransport(ctx, &options{host: rawHost, credentials: store}, client)
 	if err != nil {
 		return err
@@ -348,7 +358,8 @@ func runSearch(ctx context.Context, output io.Writer, rawHost string, client *ht
 	}
 	// Keep the existing single page of up to 50 results, with no resource-type
 	// filter or client-side ranking. The canonical service owns query bounds.
-	values := url.Values{"q": {query}, "limit": {"50"}}
+	values := pageQuery("50", cursor)
+	values.Set("q", query)
 	endpoint := transport.host + "/api/v1/workspaces/" + workspace.ID + "/search?" + values.Encode()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -373,10 +384,10 @@ func runSearch(ctx context.Context, output io.Writer, rawHost string, client *ht
 		return newExitError(ExitOperation, "search response is incomplete or exceeds its limit")
 	}
 	var page cliSearchResponse
-	if json.Unmarshal(data, &page) != nil || page.Items == nil || len(page.Items) > 50 || page.HasMore != (page.NextCursor != nil) {
+	if unmarshalResourcePage(data, &page) != nil || len(page.Items) > 50 || page.HasMore == nil || *page.HasMore != (page.NextCursor != nil) {
 		return newExitError(ExitOperation, "decode search response")
 	}
-	if page.NextCursor != nil && (*page.NextCursor == "" || len(*page.NextCursor) > 8192 || safeInline(*page.NextCursor) != *page.NextCursor) {
+	if !validNextCursor(page.NextCursor, cursor) || (page.NextCursor != nil && len(*page.NextCursor) > 2048) {
 		return newExitError(ExitOperation, "search continuation is invalid")
 	}
 	// Validate the complete page before writing any result to stdout.
@@ -390,14 +401,18 @@ func runSearch(ctx context.Context, output io.Writer, rawHost string, client *ht
 		if identifier == "" {
 			identifier = item.ResourceID
 		}
-		if _, err := fmt.Fprintf(output, "%s  %s\n", identifier, item.Title); err != nil {
+		if _, err := fmt.Fprintf(output, "%s  %s\n", safeInline(identifier), safeInline(item.Title)); err != nil {
 			return err
 		}
 	}
+	writeReadContinuation(diagnostics, page.NextCursor)
 	return nil
 }
 
-func runMyWork(ctx context.Context, output io.Writer, rawHost string, client *http.Client, store credentialStore) error {
+func runMyWork(ctx context.Context, output, diagnostics io.Writer, rawHost string, client *http.Client, store credentialStore, cursor string) error {
+	if !validReadCursor(cursor) {
+		return newExitError(ExitArguments, "cursor is invalid or too long")
+	}
 	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
 	defer cancel()
 	transport, err := newOperationTransport(ctx, &options{host: rawHost, credentials: store}, client)
@@ -409,7 +424,7 @@ func runMyWork(ctx context.Context, output io.Writer, rawHost string, client *ht
 	if err != nil {
 		return err
 	}
-	data, _, err := taskResourceExchange(ctx, transport, http.MethodGet, "/api/v1/workspaces/"+workspace.ID+"/work?limit=100", "", "", http.StatusOK)
+	data, _, err := taskResourceExchange(ctx, transport, http.MethodGet, "/api/v1/workspaces/"+workspace.ID+"/work?"+pageQuery("100", cursor).Encode(), "", "", http.StatusOK)
 	if err != nil {
 		return err
 	}
@@ -417,17 +432,20 @@ func runMyWork(ctx context.Context, output io.Writer, rawHost string, client *ht
 		Data []canonicalReadTask `json:"data"`
 		Next *string             `json:"next_cursor"`
 	}
-	if json.Unmarshal(data, &page) != nil || page.Data == nil || len(page.Data) > 100 {
+	if unmarshalResourcePage(data, &page) != nil || len(page.Data) > 100 || !validNextCursor(page.Next, cursor) {
 		return newExitError(ExitOperation, "My Work response is incomplete")
 	}
 	for _, item := range page.Data {
 		if !canonicalIdentifier(item.ID) || item.WorkspaceID != workspace.ID || item.Code == "" || item.Title == "" || !canonicalPositiveDecimal(item.Revision) {
 			return newExitError(ExitOperation, "My Work identity is incomplete")
 		}
+	}
+	for _, item := range page.Data {
 		if _, err := fmt.Fprintf(output, "%s  %s\n", safeInline(item.Code), safeInline(item.Title)); err != nil {
 			return err
 		}
 	}
+	writeReadContinuation(diagnostics, page.Next)
 	return nil
 }
 

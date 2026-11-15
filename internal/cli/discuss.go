@@ -35,12 +35,12 @@ func runDiscuss(ctx context.Context, input io.Reader, output, diagnostics io.Wri
 	if opts.isTerminal == nil || !opts.isTerminal(input, output) {
 		return newExitError(ExitArguments, "discuss requires an interactive terminal")
 	}
+	if strings.TrimSpace(os.Getenv("ASSIGN_TOKEN")) != "" {
+		return newExitError(ExitAuthentication, "terminal Discuss requires assign login; unset ASSIGN_TOKEN to use the interactive credential")
+	}
 	workspace, err := currentWorkspace(ctx, opts, client)
 	if err != nil {
 		return err
-	}
-	if workspace.ID == "" {
-		return newExitError(ExitOperation, "Workspace response does not support terminal Discuss; update Assign Core")
 	}
 	host, err := validatedHost(opts.host)
 	if err != nil {

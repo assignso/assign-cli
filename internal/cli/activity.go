@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -65,8 +66,15 @@ func newActivityCommand(opts *options, client *http.Client) *cobra.Command {
 				query.Set("group_revision", revision)
 				query.Set("snapshot", snapshot)
 			}
+			ctx, cancel := context.WithTimeout(command.Context(), operationDeadline)
+			defer cancel()
+			transport, err := newOperationTransport(ctx, opts, client)
+			if err != nil {
+				return err
+			}
+			defer transport.client.CloseIdleConnections()
 			var output json.RawMessage
-			if err := authorizedJSON(command.Context(), opts, client, http.MethodGet, path+"?"+query.Encode(), nil, &output); err != nil {
+			if err := transport.exchangeJSON(ctx, http.MethodGet, path+"?"+query.Encode(), "Activity", nil, &output); err != nil {
 				return err
 			}
 			return json.NewEncoder(command.OutOrStdout()).Encode(output)

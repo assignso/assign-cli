@@ -54,6 +54,18 @@ func taskActionFixtureClient(t *testing.T, handler http.Handler) *http.Client {
 	}}
 }
 
+type preparedHTTPS struct {
+	URL    string
+	client *http.Client
+}
+
+func newPreparedHTTPS(t *testing.T, handler http.Handler) *preparedHTTPS {
+	return &preparedHTTPS{URL: taskActionFixtureHost, client: taskActionFixtureClient(t, handler)}
+}
+
+func (fixture *preparedHTTPS) Client() *http.Client { return fixture.client }
+func (fixture *preparedHTTPS) Close()               { fixture.client.CloseIdleConnections() }
+
 // Shared canonical fixture: real CLI parsing and transport policy,
 // // no provider or environment credential store. Its complete Task deliberately
 // exceeds the collection/Comment response limit.
@@ -69,8 +81,10 @@ func taskActionFixtureHandler(t *testing.T, code, revision string, post http.Han
 			return
 		}
 		switch r.URL.Path {
-		case "/api/v1/dev/workspace":
-			_ = json.NewEncoder(w).Encode(map[string]any{"id": taskActionFixtureWorkspace, "slug": "prepared"})
+		case "/api/v1/auth-context":
+			writeWorkspaceBinding(w, taskActionFixtureWorkspace)
+		case "/api/v1/workspaces/" + taskActionFixtureWorkspace:
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": taskActionFixtureWorkspace, "slug": "prepared", "name": "Prepared"})
 		case "/api/v1/workspaces/" + taskActionFixtureWorkspace + "/tasks":
 			if r.URL.Query().Get("code") != code {
 				t.Errorf("discovery code = %q", r.URL.Query().Get("code"))
