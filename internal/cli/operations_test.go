@@ -87,6 +87,101 @@ func TestHostedAgentAndOperationCommandsUseCanonicalSingleExchange(t *testing.T)
 	}
 }
 
+func TestOperationChangeSetResultReadsOriginalTerminalOutcomes(t *testing.T) {
+	t.Setenv("ASSIGN_TOKEN", "prepared-terminal-token")
+	path := "/api/v1/workspaces/" + operationFixtureWorkspace + "/change-set-operations/" + operationFixtureID + "/result"
+	for _, test := range []struct {
+		name, id, state string
+		status          int
+		wantOutput      bool
+	}{
+		{"succeeded", operationFixtureID, "succeeded", 200, true},
+		{"cancelled", operationFixtureID, "cancelled", 200, true},
+		{"failed", operationFixtureID, "failed", 200, true},
+		{"pending", operationFixtureID, "running", 409, false},
+		{"denied", operationFixtureID, "", 403, false},
+		{"wrong identity", operationFixtureAgent, "succeeded", 200, false},
+		{"redirect", operationFixtureID, "", 307, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			calls := 0
+			client := taskActionFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				if r.URL.RequestURI() != path || r.Method != http.MethodGet || r.Header.Get("Idempotency-Key") != "" ||
+					r.Header.Get("Authorization") != "Bearer prepared-terminal-token" || r.Header.Get("Accept-Encoding") != "identity" {
+					t.Errorf("unexpected result exchange: %s %s", r.Method, r.URL)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				if test.status == http.StatusTemporaryRedirect {
+					w.Header().Set("Location", "/untrusted-result")
+				}
+				w.WriteHeader(test.status)
+				_, _ = io.WriteString(w, `{"operation_id":"`+test.id+`","id":"`+operationFixtureAgent+`","state":"`+test.state+`","version":"9007199254740993","outcomes":[{"client_item_id":"first","state":"committed"},{"client_item_id":"second","state":"conflicted"}]}`)
+			}))
+			var out, diagnostics bytes.Buffer
+			command := newRootCommandWithClient(strings.NewReader(""), &out, &diagnostics, client)
+			command.SetArgs([]string{"--host", taskActionFixtureHost, "operation", "change-set-result", operationFixtureID, "--workspace", operationFixtureWorkspace})
+			err := command.ExecuteContext(context.Background())
+			if calls != 1 || (err == nil) != test.wantOutput {
+				t.Fatalf("calls=%d err=%v", calls, err)
+			}
+			if test.wantOutput {
+				if !strings.Contains(out.String(), `"version":"9007199254740993"`) || !strings.Contains(out.String(), `"client_item_id":"first","state":"committed"},{"client_item_id":"second","state":"conflicted"`) {
+					t.Fatal("ordered exact outcomes were lost")
+				}
+			} else if out.Len() != 0 {
+				t.Fatal("printed an unverified result")
+			}
+		})
+	}
+}
+
+func TestOperationChangeSetRetryPreparesOneReviewWithoutApplying(t *testing.T) {
+	t.Setenv("ASSIGN_TOKEN", "prepared-terminal-token")
+	const key = "prepared-retry-write-key"
+	const input = `{"id":"` + operationFixtureAgent + `","expected_version":"9007199254740993","mode":"per_item","retry_operation_id":"` + operationFixtureID + `","operations":[{"client_item_id":"failed-item","tool":"task_complete","task_id":"` + operationFixtureWorkspace + `","expected_revision":"9223372036854775807","excluded":false}]}`
+	for _, test := range []struct {
+		name  string
+		body  string
+		reply int
+		calls int
+	}{
+		{"review", input, http.StatusOK, 1},
+		{"uncertain", input, http.StatusServiceUnavailable, 1},
+		{"wrong source", strings.Replace(input, operationFixtureID, operationFixtureWorkspace, 1), http.StatusOK, 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			calls := 0
+			client := taskActionFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				body, _ := io.ReadAll(r.Body)
+				if r.Method != http.MethodPost || r.URL.RequestURI() != "/api/v1/workspaces/"+operationFixtureWorkspace+"/change-sets" ||
+					r.Header.Get("Idempotency-Key") != key || r.Header.Get("Authorization") != "Bearer prepared-terminal-token" ||
+					string(body) != input {
+					t.Errorf("unexpected proposal exchange: %s %s", r.Method, r.URL)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(test.reply)
+				_, _ = io.WriteString(w, `{"id":"`+operationFixtureAgent+`","version":"9007199254740994","digest":"prepared-digest","mode":"per_item","state":"review","requires_approval":true}`)
+			}))
+			var out, diagnostics bytes.Buffer
+			command := newRootCommandWithClient(strings.NewReader(test.body), &out, &diagnostics, client)
+			command.SetArgs([]string{"--host", taskActionFixtureHost, "operation", "change-set-retry", operationFixtureID, "--workspace", operationFixtureWorkspace, "--idempotency-key", key})
+			err := command.ExecuteContext(context.Background())
+			expectSuccess := test.name == "review"
+			if calls != test.calls || (err == nil) != expectSuccess {
+				t.Fatalf("calls=%d err=%v", calls, err)
+			}
+			if calls == 1 && !strings.Contains(diagnostics.String(), key) {
+				t.Fatal("original key was not retained")
+			}
+			if expectSuccess && !strings.Contains(out.String(), `"version":"9007199254740994"`) || !expectSuccess && out.Len() != 0 {
+				t.Fatal("unexpected proposal output")
+			}
+		})
+	}
+}
+
 func TestOperationUnknownMutationNeverRetriesOrFollowsRecoveryLocation(t *testing.T) {
 	t.Setenv("ASSIGN_TOKEN", "prepared-terminal-token")
 	for _, outcome := range []string{"lost-response", "mismatched-location", "conflict", "redirect"} {

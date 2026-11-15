@@ -105,7 +105,7 @@ func newHostedAgentCommand(opts *options, client *http.Client) *cobra.Command {
 }
 
 func newOperationCommand(opts *options, client *http.Client) *cobra.Command {
-	command := &cobra.Command{Use: "operation", Short: "Recover compact status for an existing hosted Operation"}
+	command := &cobra.Command{Use: "operation", Short: "Inspect and recover an existing Operation"}
 	for _, action := range []string{"show", "cancel", "wait"} {
 		var key string
 		timeout := operationDeadline
@@ -170,6 +170,7 @@ func newOperationCommand(opts *options, client *http.Client) *cobra.Command {
 		}
 		command.AddCommand(child)
 	}
+	command.AddCommand(newChangeSetResultCommand(opts, client), newChangeSetRetryCommand(opts, client))
 	return command
 }
 
