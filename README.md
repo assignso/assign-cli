@@ -82,6 +82,7 @@ assign document url release-plan
 
 # Make a safe workflow change
 assign task show PRO-123                 # prints the Task, including Revision: 7
+assign task branch-suggestion PRO-123    # prints the authorized Task branch name
 assign task done PRO-123 --revision 7
 assign task done PRO-123 --revision "$(assign task show PRO-123 --field revision)"
 

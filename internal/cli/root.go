@@ -189,7 +189,7 @@ func newTaskCommand(opts *options, client *http.Client) *cobra.Command {
 		Short: "Work with Tasks",
 		Args:  noArgs,
 	}
-	command.AddCommand(newTaskShowCommand(opts, client))
+	command.AddCommand(newTaskShowCommand(opts, client), newTaskBranchSuggestionCommand(opts, client))
 	command.AddCommand(newTaskContextCommand(opts, client), newTaskCommentCommand(opts, client), newTaskCommentsCommand(opts, client), newTaskCreateCommand(opts, client))
 	command.AddCommand(newTaskActionCommand("start", "Start and assign a Task", opts, client))
 	command.AddCommand(newTaskActionCommand("done", "Complete a Task", opts, client))
