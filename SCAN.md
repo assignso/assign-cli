@@ -22,6 +22,16 @@ dependencies:
     url: https://github.com/assistant-ui/assistant-ui/releases
   - name: Model Context Protocol
     url: https://modelcontextprotocol.io/specification/
+maintain:
+  - path: .
+    manager: Go modules
+    update: go get <module>@<version>
+  - path: command
+    manager: Bun
+    update: bun update <package>
+  - path: terminal
+    manager: npm
+    update: npm update <package> --package-lock-only --ignore-scripts
 ---
 
 # Dependency watch
