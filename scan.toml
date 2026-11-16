@@ -1,0 +1,29 @@
+# Dependency watch for assign-cli
+
+[dependencies]
+go = "https://go.dev/doc/devel/release"
+cobra = "https://github.com/spf13/cobra/releases"
+go-keyring = "https://github.com/zalando/go-keyring/releases"
+bun = "https://github.com/oven-sh/bun/releases"
+commander-js = "https://github.com/tj/commander.js/releases"
+nodejs = "https://nodejs.org/en/about/previous-releases"
+typescript = "https://github.com/microsoft/TypeScript/releases"
+ink = "https://github.com/vadimdemedes/ink/releases"
+react = "https://react.dev/blog"
+assistant-ui = "https://github.com/assistant-ui/assistant-ui/releases"
+model-context-protocol = "https://modelcontextprotocol.io/specification/"
+
+[maintain]
+manager = "Go modules"
+command = "go get <module>@<version>"
+sources = ["https://go.dev/doc/devel/release", "https://go.dev/doc/modules/managing-dependencies"]
+
+[maintain.packages."command"]
+manager = "Bun"
+command = "bun update <package>"
+sources = ["https://github.com/oven-sh/bun/releases", "https://bun.com/docs/pm/cli/update"]
+
+[maintain.packages."terminal"]
+manager = "npm"
+command = "npm update <package> --package-lock-only --ignore-scripts"
+sources = ["https://github.com/npm/cli/releases", "https://docs.npmjs.com/cli/v11/commands/npm-update/"]
