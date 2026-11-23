@@ -13,6 +13,10 @@ react = "https://react.dev/blog"
 assistant-ui = "https://github.com/assistant-ui/assistant-ui/releases"
 model-context-protocol = "https://modelcontextprotocol.io/specification/"
 
+[watch]
+managed = ["cobra", "go-keyring", "commander-js", "typescript", "ink", "react", "assistant-ui"]
+external = ["go", "bun", "nodejs", "model-context-protocol"]
+
 [maintain]
 manager = "Go modules"
 command = "go get <module>@<version>"
