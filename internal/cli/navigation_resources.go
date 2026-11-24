@@ -223,7 +223,7 @@ func documentMarkdown(ctx context.Context, transport *operationTransport, id str
 	return text.String(), true, nil
 }
 
-func readMilestoneResource(ctx context.Context, opts *options, client *http.Client, code string) (cliMilestone, error) {
+func readMilestoneResource(ctx context.Context, opts *options, client *http.Client, code, workspaceID string) (cliMilestone, error) {
 	ctx, cancel := context.WithTimeout(ctx, operationDeadline)
 	defer cancel()
 	transport, err := newOperationTransport(ctx, opts, client)
@@ -231,7 +231,7 @@ func readMilestoneResource(ctx context.Context, opts *options, client *http.Clie
 		return cliMilestone{}, err
 	}
 	defer transport.client.CloseIdleConnections()
-	workspace, err := resourceWorkspace(ctx, transport, "")
+	workspace, err := resourceWorkspace(ctx, transport, workspaceID)
 	if err != nil {
 		return cliMilestone{}, err
 	}
@@ -247,8 +247,12 @@ func milestoneResource(ctx context.Context, transport *operationTransport, works
 	if err != nil {
 		return cliMilestone{}, err
 	}
+	return readExactMilestone(ctx, transport, workspace.ID, project, code)
+}
+
+func readExactMilestone(ctx context.Context, transport *operationTransport, workspace, project, code string) (cliMilestone, error) {
 	query := url.Values{"project_id": {project}, "code": {code}, "limit": {"1"}, "include_archived": {"true"}}
-	data, _, err := taskResourceExchange(ctx, transport, http.MethodGet, "/api/v1/workspaces/"+workspace.ID+"/milestones?"+query.Encode(), "", "", http.StatusOK)
+	data, _, err := taskResourceExchange(ctx, transport, http.MethodGet, "/api/v1/workspaces/"+workspace+"/milestones?"+query.Encode(), "", "", http.StatusOK)
 	if err != nil {
 		return cliMilestone{}, err
 	}
@@ -270,7 +274,7 @@ func milestoneResource(ctx context.Context, transport *operationTransport, works
 	}
 	item := page.Data[0].cliMilestone
 	item.Revision, err = strconv.ParseInt(page.Data[0].Revision, 10, 64)
-	if err != nil || item.Revision < 1 || item.WorkspaceID != workspace.ID || item.ProjectID != project || !canonicalIdentifier(item.ID) || item.Code == nil || *item.Code != code {
+	if err != nil || !canonicalPositiveDecimal(page.Data[0].Revision) || item.WorkspaceID != workspace || item.ProjectID != project || !canonicalIdentifier(item.ID) || item.Code == nil || *item.Code != code {
 		return cliMilestone{}, newExitError(ExitOperation, "Milestone identity is inconsistent")
 	}
 	return item, nil

@@ -41,7 +41,7 @@ type cliMilestoneProgress struct {
 
 func newMilestoneCommand(opts *options, client *http.Client) *cobra.Command {
 	group := &cobra.Command{Use: "milestone", Short: "Read Milestones by Project code", Args: noArgs}
-	var field string
+	var field, workspaceID string
 	var asJSON bool
 	show := &cobra.Command{Use: "show <milestone-code>", Short: "Show a Milestone and canonical Task progress", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
 		field = strings.ToLower(strings.TrimSpace(field))
@@ -53,7 +53,7 @@ func newMilestoneCommand(opts *options, client *http.Client) *cobra.Command {
 			return err
 		}
 		parts := milestoneCodePattern.FindStringSubmatch(code)
-		item, err := readMilestoneResource(command.Context(), opts, client, code)
+		item, err := readMilestoneResource(command.Context(), opts, client, code, workspaceID)
 		if err != nil {
 			return err
 		}
@@ -111,6 +111,7 @@ func newMilestoneCommand(opts *options, client *http.Client) *cobra.Command {
 		_, err = fmt.Fprintf(command.OutOrStdout(), "# %s  %s\n\nProject: %s\nStatus: %s\nTasks: %d completed, %d incomplete, %d total\nRevision: %d\n", safeInline(code), safeInline(item.Name), safeInline(strings.ToUpper(parts[1])), safeInline(item.Status), *item.Progress.CompletedTasks, *item.Progress.IncompleteTasks, *item.Progress.TotalTasks, item.Revision)
 		return err
 	}}
+	show.Flags().StringVar(&workspaceID, "workspace-id", "", "Credential Workspace UUID for personal/service tokens")
 	show.Flags().StringVar(&field, "field", "", "Print one field: "+strings.Join(milestoneFields, ", "))
 	show.Flags().BoolVar(&asJSON, "json", false, "Print the canonical Milestone/progress projection as JSON")
 	_ = show.RegisterFlagCompletionFunc("field", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {

@@ -41,23 +41,24 @@ type milestoneTaskQueryItem struct {
 }
 
 type milestoneTaskQueryPage struct {
-	Items              []milestoneTaskQueryItem `json:"items"`
+	Items              []milestoneTaskQueryItem `json:"data"`
 	NextCursor         *string                  `json:"next_cursor"`
-	HasMore            *bool                    `json:"has_more"`
 	QueryDigest        string                   `json:"query_digest"`
 	CollectionVersion  string                   `json:"collection_version"`
 	VisibilityRevision string                   `json:"visibility_revision"`
 	ObservedAt         string                   `json:"observed_at"`
-	ReturnedCount      *int                     `json:"returned_count"`
+	ReturnedCount      string                   `json:"returned_count"`
 	Coverage           string                   `json:"coverage"`
 	LimitReason        string                   `json:"limit_reason,omitempty"`
 }
 
 func newMilestoneTasksCommand(opts *options, client *http.Client) *cobra.Command {
 	page := taskPageOptions{limit: 100}
+	var workspaceID string
 	command := &cobra.Command{Use: "tasks <milestone-code>", Short: "Read one checked page of a Milestone's non-archived Tasks", Args: exactArgs(1), RunE: func(command *cobra.Command, args []string) error {
-		return runMilestoneTaskPage(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, args[0], page)
+		return runMilestoneTaskPage(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, args[0], workspaceID, page)
 	}}
+	command.Flags().StringVar(&workspaceID, "workspace-id", "", "Credential Workspace UUID for personal/service tokens")
 	command.Flags().StringVar(&page.format, "format", "text", "Page output: text or JSON with scope, Tasks and checked coverage")
 	command.Flags().IntVar(&page.limit, "limit", 100, "Tasks per page (1–100); continuation remains explicit")
 	command.Flags().StringVar(&page.cursor, "cursor", "", "Opaque checked continuation cursor from the same Milestone query")
@@ -68,7 +69,7 @@ func newMilestoneTasksCommand(opts *options, client *http.Client) *cobra.Command
 	return command
 }
 
-func runMilestoneTaskPage(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client, input string, options taskPageOptions) error {
+func runMilestoneTaskPage(ctx context.Context, output, diagnostics io.Writer, opts *options, client *http.Client, input, workspaceID string, options taskPageOptions) error {
 	// Reuse bounded page/format/cursor validation while giving this checked
 	// selector its own scalar fields: has_more alone cannot prove completeness.
 	field := options.field
@@ -92,7 +93,7 @@ func runMilestoneTaskPage(ctx context.Context, output, diagnostics io.Writer, op
 		return err
 	}
 	defer transport.client.CloseIdleConnections()
-	workspace, err := resourceWorkspace(ctx, transport, "")
+	workspace, err := resourceWorkspace(ctx, transport, workspaceID)
 	if err != nil {
 		return err
 	}
@@ -113,10 +114,14 @@ func runMilestoneTaskPage(ctx context.Context, output, diagnostics io.Writer, op
 	if err != nil {
 		return err
 	}
-	if err = json.Unmarshal(data, &page); err != nil {
+	if err = unmarshalResourcePage(data, &page); err != nil {
 		return newExitError(ExitOperation, "Milestone Task page is incomplete")
 	}
-	if err := page.validate(scope, parts[1], options); err != nil {
+	returnedCount, err := strconv.Atoi(page.ReturnedCount)
+	if err != nil || strconv.Itoa(returnedCount) != page.ReturnedCount {
+		return newExitError(ExitOperation, "Milestone Task page count is invalid")
+	}
+	if err := page.validate(scope, parts[1], options, returnedCount); err != nil {
 		return err
 	}
 	items := make([]milestoneTaskSelection, len(page.Items))
@@ -142,7 +147,7 @@ func runMilestoneTaskPage(ctx context.Context, output, diagnostics io.Writer, op
 			ReturnedCount      int                      `json:"returned_count"`
 			Coverage           string                   `json:"coverage"`
 			LimitReason        string                   `json:"limit_reason,omitempty"`
-		}{"assign.cli.milestone-task-page.v1", code, scope.ID, scope.WorkspaceID, scope.ProjectID, scope.Revision, items, page.NextCursor, *page.HasMore, page.QueryDigest, page.CollectionVersion, page.VisibilityRevision, page.ObservedAt, *page.ReturnedCount, page.Coverage, page.LimitReason})
+		}{"assign.cli.milestone-task-page.v1", code, scope.ID, scope.WorkspaceID, scope.ProjectID, scope.Revision, items, page.NextCursor, page.NextCursor != nil, page.QueryDigest, page.CollectionVersion, page.VisibilityRevision, page.ObservedAt, returnedCount, page.Coverage, page.LimitReason})
 	} else {
 		switch field {
 		case "coverage":
@@ -174,7 +179,7 @@ func runMilestoneTaskPage(ctx context.Context, output, diagnostics io.Writer, op
 	if stopped {
 		return newExitError(ExitOperation, "Milestone Task selection is %s (%s); discard this scan before using a fresh selection", page.Coverage, page.LimitReason)
 	}
-	if *page.HasMore && options.format != "json" {
+	if page.NextCursor != nil && options.format != "json" {
 		_, err = fmt.Fprintf(diagnostics, "assign: Milestone selection is partial; continue with --cursor %s\n", *page.NextCursor)
 	}
 	return err
@@ -184,34 +189,32 @@ func validMilestoneScopeID(id string) bool {
 	return milestoneScopeIDPattern.MatchString(id) && id != "00000000-0000-0000-0000-000000000000"
 }
 
-func (page milestoneTaskQueryPage) validate(scope cliMilestone, projectKey string, options taskPageOptions) error {
+func (page milestoneTaskQueryPage) validate(scope cliMilestone, projectKey string, options taskPageOptions, returnedCount int) error {
 	invalid := func() error {
 		return newExitError(ExitOperation, "Milestone Task page response is incomplete or inconsistent")
 	}
 	observed, err := time.Parse(time.RFC3339Nano, page.ObservedAt)
-	if err != nil || observed.IsZero() || page.Items == nil || page.HasMore == nil || page.ReturnedCount == nil || !milestoneQueryDigestPattern.MatchString(page.QueryDigest) || !milestoneQueryDigestPattern.MatchString(page.VisibilityRevision) || !validMilestoneScopeID(page.CollectionVersion) {
+	if err != nil || observed.IsZero() || page.Items == nil || !milestoneQueryDigestPattern.MatchString(page.QueryDigest) || !milestoneQueryDigestPattern.MatchString(page.VisibilityRevision) || !validMilestoneScopeID(page.CollectionVersion) {
 		return invalid()
 	}
-	if len(page.Items) > options.limit || *page.ReturnedCount < len(page.Items) || *page.ReturnedCount > 1000 || (options.cursor == "" && *page.ReturnedCount != len(page.Items)) {
+	if len(page.Items) > options.limit || returnedCount < len(page.Items) || returnedCount > 1000 || (options.cursor == "" && returnedCount != len(page.Items)) {
 		return invalid()
 	}
-	if (*page.HasMore && (page.NextCursor == nil || *page.NextCursor == "" || len(page.Items) == 0)) || (!*page.HasMore && page.NextCursor != nil && *page.NextCursor != "") {
-		return invalid()
-	}
-	if page.NextCursor != nil && (len(*page.NextCursor) > 2048 || safeInline(*page.NextCursor) != *page.NextCursor) {
+	if page.NextCursor != nil && (*page.NextCursor == "" || *page.NextCursor == options.cursor ||
+		len(*page.NextCursor) > 8192 || safeInline(*page.NextCursor) != *page.NextCursor || returnedCount == 1000) {
 		return invalid()
 	}
 	switch page.Coverage {
 	case "complete":
-		if *page.HasMore || page.LimitReason != "" {
+		if page.NextCursor != nil || page.LimitReason != "" {
 			return invalid()
 		}
 	case "partial":
-		if (*page.HasMore && page.LimitReason != "more_pages") || (!*page.HasMore && page.LimitReason != "scan_limit") {
+		if (page.NextCursor != nil && page.LimitReason != "more_pages") || (page.NextCursor == nil && page.LimitReason != "scan_limit") {
 			return invalid()
 		}
 	case "stale":
-		if *page.HasMore || len(page.Items) != 0 || *page.ReturnedCount != 0 || page.LimitReason != "collection_or_visibility_changed" {
+		if page.NextCursor != nil || len(page.Items) != 0 || returnedCount != 0 || page.LimitReason != "collection_or_visibility_changed" {
 			return invalid()
 		}
 	default:
