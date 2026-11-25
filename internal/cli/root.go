@@ -265,6 +265,7 @@ var statusUUIDPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a
 
 func newTaskActionCommand(action, description string, opts *options, client *http.Client) *cobra.Command {
 	var revision int64
+	var branch bool
 	var key, targetStatusID, taskID, condition string
 	command := &cobra.Command{
 		Use:   action + " <task-code>",
@@ -294,8 +295,14 @@ func newTaskActionCommand(action, description string, opts *options, client *htt
 					return newExitError(ExitArguments, "--target-status-id must be a Status UUID")
 				}
 			}
+			if branch {
+				return runTaskBranchStart(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, code, revision, requestKey, taskID, condition)
+			}
 			return runTaskAction(command.Context(), command.OutOrStdout(), command.ErrOrStderr(), opts, client, action, code, revision, requestKey, targetStatusID, taskID, condition)
 		},
+	}
+	if action == "start" {
+		command.Flags().BoolVar(&branch, "branch", false, "Create and switch to the local Task branch and record its association")
 	}
 	if action == "done" {
 		command.Flags().StringVar(&targetStatusID, "target-status-id", "", "Completing Status UUID; required when several Statuses count as completed")

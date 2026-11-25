@@ -77,6 +77,13 @@ func newTaskContextCommand(opts *options, client *http.Client) *cobra.Command {
 		if err != nil {
 			return err
 		}
+		var milestoneCode string
+		if command.Flags().Changed("milestone") {
+			milestoneCode, err = canonicalMilestoneCode(milestoneScope)
+			if err != nil {
+				return err
+			}
+		}
 		profile, cap := "compact", 16*1024
 		if full {
 			profile, cap = "full", 64*1024
@@ -89,13 +96,10 @@ func newTaskContextCommand(opts *options, client *http.Client) *cobra.Command {
 		}
 		defer transport.client.CloseIdleConnections()
 		var fence *milestoneContextFence
-		if command.Flags().Changed("milestone") {
-			fence, err = readResourceMilestoneContextFence(ctx, transport, workspace.ID, code, milestoneScope)
+		if milestoneCode != "" {
+			fence, err = readResourceMilestoneContextFence(ctx, transport, item, milestoneCode)
 			if err != nil {
 				return err
-			}
-			if fence.task.ID != item.ID {
-				return newExitError(ExitOperation, "Task identity changed while acquiring Milestone scope")
 			}
 		}
 		var packet struct {
@@ -117,7 +121,11 @@ func newTaskContextCommand(opts *options, client *http.Client) *cobra.Command {
 			return newExitError(ExitOperation, "Task context response is incomplete or exceeds its profile limit")
 		}
 		if fence != nil {
-			current, err := readResourceMilestoneContextFence(ctx, transport, workspace.ID, code, milestoneScope)
+			observed, err := resolveResourceTask(ctx, transport, workspace.ID, code)
+			if err != nil {
+				return err
+			}
+			current, err := readResourceMilestoneContextFence(ctx, transport, observed, milestoneCode)
 			if err != nil {
 				return err
 			}

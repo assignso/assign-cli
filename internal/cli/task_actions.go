@@ -37,29 +37,66 @@ func runTaskAction(ctx context.Context, output, diagnostics io.Writer, opts *opt
 	}
 	defer transport.client.CloseIdleConnections()
 	if taskID == "" {
-		workspace, err := resourceWorkspace(ctx, transport, "")
+		observed, tag, err := observeTaskAction(ctx, transport, code, revision)
 		if err != nil {
 			return err
 		}
-		discovered, err := resolveResourceTask(ctx, transport, workspace.ID, code)
-		if err != nil {
-			return err
-		}
-		data, headers, err := taskActionExchange(ctx, transport, http.MethodGet, "/api/v1/tasks/"+discovered.ID+"?view=canonical", "", "")
-		if err != nil {
-			return err
-		}
-		var observed canonicalCreatedTask
-		// Canonical items exclude the Project-derived display code. Bind the
-		// exact discovery result through its immutable ID, Project and number.
-		if json.Unmarshal(data, &observed) != nil || observed.ID != discovered.ID || observed.WorkspaceID != workspace.ID || observed.ProjectID != discovered.ProjectID || !canonicalIdentifier(observed.ProjectID) || observed.TaskNumber != discovered.TaskNumber || !canonicalPositiveDecimal(observed.TaskNumber) || observed.Title == "" || !canonicalPositiveDecimal(observed.Revision) || !taskActionValidator(headers.Get("ETag")) {
-			return newExitError(ExitOperation, "canonical Task observation is incomplete; no action sent")
-		}
-		if observed.Revision != strconv.FormatInt(revision, 10) {
-			return newExitError(ExitConflict, "Task revision changed; run assign task show %s before a new operation; no action sent", code)
-		}
-		taskID, condition = observed.ID, headers.Get("ETag")
+		taskID, condition = observed.ID, tag
 	}
+	retry := taskActionRetry(transport.host, action, code, taskID, condition, key, targetStatusID)
+	result, reassigned, err := sendTaskAction(ctx, diagnostics, transport, action, taskID, condition, key, targetStatusID, retry)
+	if err != nil {
+		return err
+	}
+	if reassigned {
+		if _, err := fmt.Fprintln(diagnostics, "assign: Task was reassigned to you"); err != nil {
+			return newExitError(ExitOperation, "Task started, but the reassignment warning could not be written; retain the original recovery inputs")
+		}
+	}
+	_, err = fmt.Fprintf(output, "%s  %s\n", safeInline(code), safeInline(result.Title))
+	return err
+}
+
+func observeTaskAction(ctx context.Context, transport *operationTransport, code string, revision int64) (canonicalCreatedTask, string, error) {
+	var observed canonicalCreatedTask
+	workspace, err := resourceWorkspace(ctx, transport, "")
+	if err != nil {
+		return observed, "", observeTaskActionError(code, err)
+	}
+	discovered, err := resolveResourceTask(ctx, transport, workspace.ID, code)
+	if err != nil {
+		return observed, "", observeTaskActionError(code, err)
+	}
+	data, headers, err := taskActionExchange(ctx, transport, http.MethodGet, "/api/v1/tasks/"+discovered.ID+"?view=canonical", "", "")
+	if err != nil {
+		return observed, "", observeTaskActionError(code, err)
+	}
+	// The canonical item omits the Project-derived display code.
+	if json.Unmarshal(data, &observed) != nil || observed.ID != discovered.ID || observed.WorkspaceID != workspace.ID || observed.ProjectID != discovered.ProjectID || !canonicalIdentifier(observed.ProjectID) || observed.TaskNumber != discovered.TaskNumber || !canonicalPositiveDecimal(observed.TaskNumber) || observed.Title == "" || !canonicalPositiveDecimal(observed.Revision) || !taskActionValidator(headers.Get("ETag")) {
+		return observed, "", newExitError(ExitOperation, "canonical Task observation is incomplete; no action sent")
+	}
+	if observed.Revision != strconv.FormatInt(revision, 10) {
+		return observed, "", newExitError(ExitConflict, "Task revision changed; run assign task show %s before a new operation; no action sent", code)
+	}
+	return observed, headers.Get("ETag"), nil
+}
+
+func observeTaskActionError(code string, err error) error {
+	if exitCode(err) == ExitConflict {
+		return fmt.Errorf("%w; run assign task show %s before a new operation", err, code)
+	}
+	return err
+}
+
+func taskActionRetry(host, action, code, taskID, condition, key, targetStatusID string) string {
+	retry := "assign --host " + taskActionArgument(host) + " task " + action + " " + taskActionArgument(code) + " --task-id " + taskActionArgument(taskID) + " --if-match " + taskActionArgument(condition) + " --idempotency-key " + taskActionArgument(key)
+	if targetStatusID != "" {
+		retry += " --target-status-id " + taskActionArgument(targetStatusID)
+	}
+	return retry
+}
+
+func sendTaskAction(ctx context.Context, diagnostics io.Writer, transport *operationTransport, action, taskID, condition, key, targetStatusID, retry string) (canonicalCreatedTask, bool, error) {
 	canonicalAction := action
 	if action == "done" {
 		canonicalAction = "complete"
@@ -68,18 +105,14 @@ func runTaskAction(ctx context.Context, output, diagnostics io.Writer, opts *opt
 	if targetStatusID != "" {
 		path += "?target_status_id=" + url.QueryEscape(targetStatusID)
 	}
-	retry := "assign --host " + taskActionArgument(transport.host) + " task " + action + " " + taskActionArgument(code) + " --task-id " + taskActionArgument(taskID) + " --if-match " + taskActionArgument(condition) + " --idempotency-key " + taskActionArgument(key)
-	if targetStatusID != "" {
-		retry += " --target-status-id " + taskActionArgument(targetStatusID)
-	}
 	// Persist the recovery tuple to stderr before the effect, including when
 	// stdout is piped. Failure to expose it prevents the write.
 	if _, err := fmt.Fprintf(diagnostics, "assign: retain the same credential; identical retry: %s\n", retry); err != nil {
-		return newExitError(ExitOperation, "could not write Task recovery inputs; no action sent")
+		return canonicalCreatedTask{}, false, newExitError(ExitOperation, "could not write Task recovery inputs; no action sent")
 	}
 	data, headers, err := taskActionExchange(ctx, transport, http.MethodPost, path, key, condition)
 	if err != nil {
-		return fmt.Errorf("%w; identical retry with the same credential: %s", err, retry)
+		return canonicalCreatedTask{}, false, fmt.Errorf("%w; identical retry with the same credential: %s", err, retry)
 	}
 	var result struct {
 		Task          canonicalCreatedTask `json:"task"`
@@ -101,17 +134,9 @@ func runTaskAction(ctx context.Context, output, diagnostics io.Writer, opts *opt
 		invalid = invalid || headers.Get("ETag") != ""
 	}
 	if invalid {
-		return newExitError(ExitOperation, "Task action response is incomplete; retain the same credential and reconcile with identical retry: %s", retry)
+		return canonicalCreatedTask{}, false, newExitError(ExitOperation, "Task action response is incomplete; retain the same credential and reconcile with identical retry: %s", retry)
 	}
-	if *result.Reassigned {
-		if _, err := fmt.Fprintln(diagnostics, "assign: Task was reassigned to you"); err != nil {
-			return newExitError(ExitOperation, "Task started, but the reassignment warning could not be written; retain the original recovery inputs")
-		}
-	}
-	// Keep the selected code even for an original acknowledgement after a
-	// rename. Recovery must not rediscover a mutable code or invent a new one.
-	_, err = fmt.Fprintf(output, "%s  %s\n", safeInline(code), safeInline(result.Task.Title))
-	return err
+	return result.Task, *result.Reassigned, nil
 }
 
 // Canonical Task representations can contain the complete description. Keep the

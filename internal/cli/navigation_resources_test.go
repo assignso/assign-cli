@@ -77,9 +77,13 @@ func TestCanonicalNavigationResources(t *testing.T) {
 	if err != nil || doc.Revision != 9007199254740993 || doc.Body != "# Plan\n\n**Keep formatting**\n" {
 		t.Fatalf("Document: %+v %v", doc, err)
 	}
-	mile, err := readMilestoneResource(context.Background(), opts, server.Client(), "PRO-M1")
+	mile, err := readMilestoneResource(context.Background(), opts, server.Client(), "PRO-M1", "")
 	if err != nil || mile.Revision != 9007199254740993 || *mile.Progress.CompletedTasks != 1 {
 		t.Fatalf("Milestone: %+v %v", mile, err)
+	}
+	show, _, err := executePreparedTaskFixture(t, server, "", "milestone", "show", "pro-m1", "--workspace-id", workspace, "--field", "revision")
+	if err != nil || show != "9007199254740993\n" {
+		t.Fatalf("Milestone show: %q %v", show, err)
 	}
 	output.Reset()
 	if err = runMyWork(context.Background(), &output, io.Discard, server.URL, server.Client(), opts.credentials, ""); err != nil || output.String() != "PRO-1  Ship\n" {

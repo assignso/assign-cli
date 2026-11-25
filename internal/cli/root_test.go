@@ -3,6 +3,8 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -327,14 +329,29 @@ func TestDoctorRequiresAuthentication(t *testing.T) {
 
 func TestTaskShowPrintsRevisionForLifecycleActions(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
 		switch request.URL.Path {
-		case "/api/v1/cli/tasks/PRO-123":
-			response.Header().Set("Content-Type", "application/json")
-			_, _ = response.Write([]byte(`{"code":"PRO-123","project_code":"PRO","title":"Ship\u001b[31m now","status_category":"in_progress","revision":7,"url":"https://app.assign.so/app/assign/tasks/PRO-123"}`))
-		case "/api/v1/cli/tasks/PRO-404":
-			http.NotFound(response, request)
+		case "/api/v1/auth-context":
+			writeWorkspaceBinding(response, taskActionFixtureWorkspace)
+		case "/api/v1/workspaces/" + taskActionFixtureWorkspace:
+			_, _ = fmt.Fprintf(response, `{"id":%q,"name":"Assign","slug":"assign"}`, taskActionFixtureWorkspace)
+		case "/api/v1/workspaces/" + taskActionFixtureWorkspace + "/tasks":
+			switch code := request.URL.Query().Get("code"); code {
+			case "PRO-123":
+				item := taskActionFixture(code, "7")
+				item["title"] = "Ship\x1b[31m now"
+				item["web_url"] = "https://app.assign.so/app/assign/tasks/PRO-123"
+				_ = json.NewEncoder(response).Encode(map[string]any{
+					"data": []any{item}, "next_cursor": nil, "coverage": "complete",
+					"included": map[string]any{"statuses": []any{map[string]any{"id": item["status_id"], "category": "in_progress"}}},
+				})
+			case "PRO-404":
+				_, _ = response.Write([]byte(`{"data":[],"next_cursor":null,"coverage":"complete"}`))
+			default:
+				t.Errorf("unexpected Task selector %q", code)
+			}
 		default:
-			t.Fatalf("unexpected path %s", request.URL.Path)
+			t.Errorf("unexpected path %s", request.URL.Path)
 		}
 	}))
 	defer server.Close()

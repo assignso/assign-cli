@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -125,14 +126,19 @@ func TestInitUsesStoredHostAndSavesOnlyAuthorizedProject(t *testing.T) {
 		}
 		response.Header().Set("Content-Type", "application/json")
 		switch request.URL.Path {
-		case "/api/v1/cli/projects/ASG":
+		case "/api/v1/auth-context":
+			writeWorkspaceBinding(response, taskActionFixtureWorkspace)
+		case "/api/v1/workspaces/" + taskActionFixtureWorkspace + "/projects":
+			if request.URL.Query().Get("code") != "ASG" {
+				t.Errorf("unexpected Project selector %s", request.URL.RawQuery)
+			}
 			if denied {
 				response.WriteHeader(http.StatusForbidden)
 				return
 			}
-			_, _ = io.WriteString(response, `{"code":"ASG","name":"Assign","path":"assign","url":"https://assign.example.test/projects/assign","revision":1}`)
-		case "/api/v1/dev/workspace":
-			_, _ = io.WriteString(response, `{"name":"Assign","slug":"assign","role":"owner"}`)
+			_, _ = fmt.Fprintf(response, `{"data":[{"id":%q,"workspace_id":%q,"key":"ASG","name":"Assign","path":"assign","web_url":"https://app.assign.so/app/assign/projects/assign","revision":"1"}],"next_cursor":null}`, taskActionFixtureProject, taskActionFixtureWorkspace)
+		case "/api/v1/workspaces/" + taskActionFixtureWorkspace:
+			_, _ = fmt.Fprintf(response, `{"id":%q,"name":"Assign","slug":"assign","role":"owner"}`, taskActionFixtureWorkspace)
 		default:
 			t.Errorf("unexpected request %s", request.URL.Path)
 		}
@@ -172,8 +178,8 @@ func TestInitUsesStoredHostAndSavesOnlyAuthorizedProject(t *testing.T) {
 	if !bytes.Equal(before, after) {
 		t.Fatal("denied Project changed stored selection")
 	}
-	if requests != 3 {
-		t.Fatalf("expected two successful reads and one denial, got %d", requests)
+	if requests != 6 {
+		t.Fatalf("expected three canonical reads for each attempt, got %d", requests)
 	}
 }
 
