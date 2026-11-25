@@ -79,7 +79,7 @@ func TestMilestoneCheckedCanonicalPages(t *testing.T) {
 					_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{fixtureMilestone("9007199254740993")}, "next_cursor": nil})
 				case "/api/v1/workspaces/" + taskActionFixtureWorkspace + "/tasks":
 					reads++
-					if q.Get("project_id") != taskActionFixtureProject || q.Get("milestone_id") != fixtureMilestoneID || q.Get("consistency") != "checked" || q.Get("state") != "all" || q.Get("include_archived") != "false" || q.Get("limit") != limit || q.Get("cursor") != tc.inputCursor {
+					if q.Get("project_id") != taskActionFixtureProject || q.Get("milestone_id") != fixtureMilestoneID || q.Get("consistency") != "checked" || q.Get("order") != "updated_at" || q.Get("state") != "all" || q.Get("include_archived") != "false" || q.Get("limit") != limit || q.Get("cursor") != tc.inputCursor {
 						t.Errorf("Task selector %v", q)
 					}
 					if tc.httpStatus != 0 {

@@ -105,7 +105,7 @@ func runMilestoneTaskPage(ctx context.Context, output, diagnostics io.Writer, op
 	if !validMilestoneScopeID(scope.ID) || !validMilestoneScopeID(scope.WorkspaceID) || !validMilestoneScopeID(scope.ProjectID) || scope.Code == nil || *scope.Code != code || scope.MilestoneNumber == nil || *scope.MilestoneNumber != parts[2] || scope.Revision < 1 {
 		return newExitError(ExitOperation, "Milestone scope response is incomplete or inconsistent")
 	}
-	query := url.Values{"project_id": {scope.ProjectID}, "milestone_id": {scope.ID}, "consistency": {"checked"}, "state": {"all"}, "include_archived": {"false"}, "limit": {strconv.Itoa(options.limit)}}
+	query := url.Values{"project_id": {scope.ProjectID}, "milestone_id": {scope.ID}, "consistency": {"checked"}, "order": {"updated_at"}, "state": {"all"}, "include_archived": {"false"}, "limit": {strconv.Itoa(options.limit)}}
 	if options.cursor != "" {
 		query.Set("cursor", options.cursor)
 	}
